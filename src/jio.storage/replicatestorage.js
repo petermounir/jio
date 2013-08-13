@@ -1,110 +1,399 @@
-/*jslint indent: 2, maxlen: 80, sloppy: true, nomen: true */
-/*global jIO: true */
-jIO.addStorageType('replicate', function (spec, my) {
+/*jslint indent: 2, maxlen: 80, nomen: true, regexp: true */
+/*global define, jIO */
 
-  var that, cloned_option, priv = {},
-    super_serialized = that.serialized;
+// {
+//   "type": "replicate",
+//   "storage_list": [<storage spec>, ...]
+//   "conditions": {
+//     "modified": "greatest date",
+//     "type": {"action": "afs", "coefficient": 2},
+//   }
+// }
 
-  spec = spec || {};
-  that = my.basicStorage(spec, my);
+// conditions:
+// - lastest date (ld)/ earliest date (ed)
+// - greatest number (gn) / lowest number (ln) // 2 > 1
+// - alphabeticaly farthest string (afs) / alph.. closest string (acs)
+// - greatest version (gv) / lowest version (lv) // '1.10c' > '1.9c'
+// - longest list (ll) / shortest list (sl) // [0].length > [].length
+// - longest string (ls) / shortest string (ss) // 'a'.length > ''.length
+// - contains content type (contentType) // ["aa", "text/plain"] > ["zz", "zz"]
+// - contains DCMIType vocabulary (DCMIType)
+//                                    // ["aa", "Text"] > ["zz", "Web Page"]
 
-  priv.return_value_array = [];
-  priv.storagelist = spec.storagelist || [];
-  priv.nb_storage = priv.storagelist.length;
+// define([module_name], [dependencies], module);
+(function (dependencies, module) {
+  "use strict";
+  if (typeof define === 'function' && define.amd) {
+    return define(dependencies, module);
+  }
+  module(jIO);
+}(['jio'], function (jIO) {
+  "use strict";
 
-  that.serialized = function () {
-    var o = super_serialized();
-    o.storagelist = priv.storagelist;
-    return o;
+  var actions = {}, content_type_re = new RegExp(
+    "^\\s*([a-z]+/[a-zA-Z0-9\\+\\-\\.]+)\\s*" +
+      "(?:;\\s*charset\\s*=\\s*([a-zA-Z0-9\\-]+)\\s*)?$"
+  ), dcmi_types = {
+    'Collection': 'Collection',
+    'Dataset': 'Dataset',
+    'Event': 'Event',
+    'Image': 'Image',
+    'InteractiveResource': 'InteractiveResource',
+    'MovingImage': 'MovingImage',
+    'PhysicalObject': 'PhysicalObject',
+    'Service': 'Service',
+    'Software': 'Software',
+    'Sound': 'Sound',
+    'StillImage': 'StillImage',
+    'Text': 'Text'
   };
 
-  that.validateState = function () {
-    if (priv.storagelist.length === 0) {
-      return 'Need at least one parameter: "storagelist" ' +
-        'containing at least one storage.';
+
+  /**
+   * Returns the number with the lowest value
+   *
+   * @param  {Number} *values The values to compare
+   * @return {Number} The minimum
+   */
+  function min() {
+    var i, val;
+    for (i = 1; i < arguments.length; i += 1) {
+      if (val === undefined || val > arguments[i]) {
+        val = arguments[i];
+      }
     }
-    return '';
+    return val;
+  }
+
+  /**
+   * Creates a new array of numbers, strings, or booleans from a metadata array.
+   *
+   * @param  {Array} array The metadata array
+   * @return {Array} The new array
+   */
+  function metadataArrayToContentArray(array) {
+    var i;
+    array = array.slice();
+    for (i = 0; i < array.length; i += 1) {
+      if (typeof array[i] === 'object') {
+        array[i] = array[i].content;
+      }
+    }
+    return array;
+  }
+
+  // initialize actions
+
+  actions.ld = function compareAsDate(a, b) {
+    a = new Date(a);
+    b = new Date(b);
+    return a < b ? -1 : a > b ? 1 : 0;
+  };
+  actions['lastest date'] = actions.ld;
+
+  actions.ed = function (a, b) {
+    return -actions.ld(a, b);
+  };
+  actions['earliest date'] = actions.ed;
+
+  actions.gn = function compareAsNumber(a, b) {
+    a = parseFloat(a);
+    b = parseFloat(b);
+    if (a < b) {
+      return -1;
+    }
+    if (b < a) {
+      return 1;
+    }
+    if (isNaN(a)) {
+      if (isNaN(b)) {
+        return 0;
+      }
+      return -1;
+    }
+    if (isNaN(b)) {
+      return 1;
+    }
+    return 0;
+  };
+  actions['greatest number'] = actions.gn;
+
+  actions.ln = function (a, b) {
+    return -actions.gn(a, b);
+  };
+  actions['lowest number'] = actions.ln;
+
+  actions.afs = function compareAsString(a, b) {
+    if (Array.isArray(a)) {
+      a = metadataArrayToContentArray(a).join(', ');
+    } else if (typeof a === 'object') {
+      a = a.content.toString();
+    } else {
+      a = a.toString();
+    }
+    if (Array.isArray(b)) {
+      b = metadataArrayToContentArray(b).join(', ');
+    } else if (typeof b === 'object') {
+      b = b.content.toString();
+    } else {
+      a = a.toString();
+    }
+    return a < b ? -1 : a > b ? 1 : 0;
+  };
+  actions['alphabeticaly farthest string'] = actions.afs;
+
+  actions.acs = function (a, b) {
+    return -actions.afs(a, b);
   };
 
-  priv.isTheLast = function (error_array) {
-    return (error_array.length === priv.nb_storage);
+  actions.ll = function compareLengthAsList(a, b) {
+    if (!Array.isArray(a)) {
+      a = 1;
+    } else {
+      a = a.length;
+    }
+    if (!Array.isArray(b)) {
+      b = 1;
+    } else {
+      b = b.length;
+    }
+    return a < b ? -1 : a > b ? 1 : 0;
   };
+  actions['longest list'] = actions.ll;
 
-  priv.doJob = function (command, errormessage, nodocid) {
-    var done = false,
-      error_array = [],
-      i,
-      error = function (err) {
-        if (!done) {
-          error_array.push(err);
-          if (priv.isTheLast(error_array)) {
-            that.error({
-              status: 207,
-              statusText: 'Multi-Status',
-              error: 'multi_status',
-              message: 'All ' + errormessage + (!nodocid ? ' "' +
-                command.getDocId() + '"' : ' ') + ' requests have failed.',
-              reason: 'requests fail',
-              array: error_array
-            });
+  actions.sl = function (a, b) {
+    return -actions.ll(a, b);
+  };
+  actions['shortest list'] = actions.sl;
+
+  actions.ls = function compareLengthAsString(a, b) {
+    if (a === undefined || a === null) {
+      a = 0;
+    } else {
+      a = a.toString().length;
+    }
+    if (b === undefined || b === null) {
+      b = 0;
+    } else {
+      b = b.toString().length;
+    }
+    return a < b ? -1 : a > b ? 1 : 0;
+  };
+  actions['longest string'] = actions.ls;
+
+  actions.ss = function (a, b) {
+    return -actions.ls(a, b);
+  };
+  actions['shortest string'] = actions.ss;
+
+  /**
+   * Splits the version into an array of numbers and separators
+   *
+   * @param {String} str The string to split
+   * @return {Array} The splited version
+   */
+  function versionSplit(str) {
+    var part, res = [];
+    if (str === undefined || str === null) {
+      return [];
+    }
+    str = str.toString().trim();
+    while (part !== null && str !== '') {
+      part = /([0-9]+)?([^0-9]+)?/.exec(str);
+      if (part[1] !== undefined) {
+        res[res.length] = parseInt(part[1], 10);
+      }
+      res[res.length] = part[2];
+      str = str.slice(part[0].length);
+    }
+    return res;
+  }
+
+  /**
+   * Comparison function to compare version string.  This function can be used
+   * in the Array.prototype.sort method.
+   *
+   * @param  {String} a The first value to compare
+   * @param  {String} b The second value to compare
+   * @return {Number} if a < b: -1, if a > b: 1, else 0
+   */
+  actions.gv = function compareVersion(a, b) {
+    var i, l;
+    a = versionSplit(a);
+    b = versionSplit(b);
+    l = min(a.length, b.length);
+    for (i = 0; i < l; i += 1) {
+      if (a[i] < b[i]) {
+        return -1;
+      }
+      if (a[i] > b[i]) {
+        return 1;
+      }
+    }
+    if (i < a.length) {
+      return 1;
+    }
+    if (i < b.length) {
+      return -1;
+    }
+    return 0;
+  };
+  actions['greatest version'] = actions.gv;
+
+  actions.lv = function (a, b) {
+    return -actions.gv(a, b);
+  };
+  actions['lowest version'] = actions.lv;
+
+  function getMetadataContentType(meta) {
+    var i, res;
+    if (!Array.isArray(meta)) {
+      meta = [meta];
+    }
+    for (i = 0; i < meta.length; i += 1) {
+      if (typeof meta[i] === 'object') {
+        res = meta[i].content;
+      } else {
+        res = meta[i];
+      }
+      res = content_type_re.exec(res.toString());
+      if (res !== null) {
+        return res[1] + (res[2] !== undefined ? ";charset=" + res[2] : "");
+      }
+    }
+  }
+
+  actions.contentType = function (a, b) {
+    a = getMetadataContentType(a);
+    b = getMetadataContentType(b);
+    if (a === undefined) {
+      if (b === undefined) {
+        return 0;
+      }
+      return -1;
+    }
+    if (b === undefined) {
+      return 1;
+    }
+    return 0;
+  };
+  actions['contains content type'] = actions.contentType;
+
+  function getMetadataDCMIType(meta) {
+    var i, res;
+    if (!Array.isArray(meta)) {
+      meta = [meta];
+    }
+    for (i = 0; i < meta.length; i += 1) {
+      if (typeof meta[i] === 'object') {
+        res = meta[i].content;
+      } else {
+        res = meta[i];
+      }
+      if (dcmi_types[res]) {
+        return res;
+      }
+    }
+  }
+
+  actions.DCMIType = function (a, b) {
+    a = getMetadataDCMIType(a);
+    b = getMetadataDCMIType(b);
+    if (a === undefined) {
+      if (b === undefined) {
+        return 0;
+      }
+      return -1;
+    }
+    if (b === undefined) {
+      return 1;
+    }
+    return 0;
+  };
+  actions['contains DCMIType vocabulary'] = actions.DCMIType;
+
+  function runDocumentMetadataRound(documents, metadata, action, coef) {
+    var i, res, winners = [0];
+    for (i = 1; i < documents.length; i += 1) {
+      res = actions[action](documents[winners[0]][0], documents[i][0]);
+      if (res === 0) {
+        winners[winners.length] = i;
+      } else if (res < 0) {
+        winners = [i];
+      }
+    }
+    for (i = 0; i < winners.length; i += 1) {
+      documents[winners[i]][1] += coef;
+    }
+    return documents;
+  }
+
+  function runDocumentMetadataBattle(documents, conditions) {
+    var i, coef, action;
+    for (i = 0; i < documents.length; i += 1) {
+      documents[i] = [documents[i], 0];
+    }
+    for (i in conditions) {
+      if (conditions.hasOwnProperty(i)) {
+        if (typeof conditions[i] === 'string') {
+          action = conditions[i];
+          coef = 1;
+        } else if (typeof conditions[i] === 'object') {
+          action = conditions[i].action;
+          coef = conditions[i].coef;
+          if (typeof coef !== 'number' && coef === 0) {
+            action = '';
           }
         }
-      },
-      success = function (val) {
-        if (!done) {
-          done = true;
-          that.success(val);
+        if (actions[action]) {
+          runDocumentMetadataRound(documents, i, action, coef);
         }
-      };
-    for (i = 0; i < priv.nb_storage; i += 1) {
-      cloned_option = command.cloneOption();
-      that.addJob(command.getLabel(), priv.storagelist[i],
-        command.cloneDoc(), cloned_option, success, error);
+      }
     }
-  };
+    return documents;
+  }
 
-  that.post = function (command) {
-    priv.doJob(command, 'post');
-    that.end();
-  };
+  function replicateStorage(spec, my) {
+    var error, priv = {}, that = my.basicStorage(spec, my);
 
-  /**
-   * Save a document in several storages.
-   * @method put
-   */
-  that.put = function (command) {
-    priv.doJob(command, 'put');
-    that.end();
-  };
+    if (typeof spec.conditions !== 'object' ||
+        Object.getPrototypeOf(spec.conditions) !== Object.prototype) {
+      error = new TypeError("ReplicateStorage(): " +
+                            "'conditions' is not of type 'object'");
+    }
 
-  /**
-   * Load a document from several storages, and send the first retreived
-   * document.
-   * @method get
-   */
-  that.get = function (command) {
-    priv.doJob(command, 'get');
-    that.end();
-  };
+    if (Array.isArray(spec.storage_list)) {
+      error = new TypeError("ReplicateStorage(): " +
+                            "'storage_list' is not of type 'array'");
+    }
 
-  /**
-   * Get a document list from several storages, and returns the first
-   * retreived document list.
-   * @method allDocs
-   */
-  that.allDocs = function (command) {
-    priv.doJob(command, 'allDocs', true);
-    that.end();
-  };
+    //////////////////////////////
+    // Overrides
 
-  /**
-   * Remove a document from several storages.
-   * @method remove
-   */
-  that.remove = function (command) {
-    priv.doJob(command, 'remove');
-    that.end();
-  };
+    that.validateState = function () {
+      return error && error.message;
+    };
 
-  return that;
-});
+    that.specToStore = function () {
+      return {
+        "storage_list": spec.storage_list,
+        "conditions": spec.conditions,
+      };
+    };
+
+    //////////////////////////////
+    // JIO Commands
+
+    that.post = function (command) {
+      var metadata, options;
+      metadata = command.cloneDoc();
+      options = command.cloneOptions();
+    };
+
+    return that;
+  }
+
+  jIO.addStorageType('replicate', replicateStorage);
+
+}));
