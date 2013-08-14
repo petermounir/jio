@@ -743,22 +743,23 @@
   function replicateStorage(spec, my) {
     var error, priv = {}, that = my.basicStorage(spec, my);
 
-    if (typeof spec.conditions !== 'object' ||
-        Object.getPrototypeOf(spec.conditions) !== Object.prototype) {
+    if (spec.conditions !== undefined &&
+        (typeof spec.conditions !== 'object' ||
+         Object.getPrototypeOf(spec.conditions) !== Object.prototype)) {
       error = new TypeError("ReplicateStorage(): " +
                             "'conditions' is not of type 'object'");
     }
 
-    if (Array.isArray(spec.storage_list)) {
+    if (!Array.isArray(spec.storage_list) || spec.storage_list.length === 0) {
       error = new TypeError("ReplicateStorage(): " +
-                            "'storage_list' is not of type 'array'");
+                            "'storage_list' is not an array which length > 0");
     }
 
     //////////////////////////////
     // Overrides
 
     that.validateState = function () {
-      return error && error.message;
+      return (error || '') && error.message;
     };
 
     that.specToStore = function () {
