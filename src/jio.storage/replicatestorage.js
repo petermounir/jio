@@ -489,6 +489,250 @@
   }
 
   ////////////////////////////////////////////////////////////
+  // Class Tools
+
+  /**
+   * Promise()
+   *
+   * @class Promise
+   * @constructor
+   */
+  function Promise() {
+    this._onReject = [];
+    this._onResolve = [];
+    this._onProgress = [];
+    this._state = "";
+    this._answers = undefined;
+  }
+
+  /**
+   * when(item, [onSuccess], [onError]): Promise
+   *
+   * Return an item as first parameter of the promise answer. If item is of
+   * type Promise, the method will just return the promise. If item is of type
+   * Deferred, the method will return the deferred promise.
+   *
+   *     Promise.when('a').then(console.log); // shows 'a'
+   *
+   * @method when
+   * @static
+   * @param  {Any} item The item to use
+   * @param  {Function} [onSuccess] The callback called on success
+   * @param  {Function} [onError] the callback called on error
+   * @return {Promise} The promise
+   */
+  Promise.when = function (item, onSuccess, onError) {
+    if (item instanceof Promise) {
+      return item;
+    }
+    var p = new Promise().done(onSuccess).fail(onError);
+    p.defer().resolve(item);
+    return p;
+  };
+
+  /**
+   * all(*items): Promise
+   *
+   * Resolve the promise only when item are resolved. The item type must be like
+   * the item parameter of the `when` static method.
+   *
+   *     Promise.all(Promise.when('a'), 'b').then(console.log); // shows 'a b'
+   *
+   * @method all
+   * @static
+   * @param  {Any} *items The items to use
+   * @return {Promise} The promise
+   */
+  Promise.all = function () { // *promises
+    var results = [], errors = [], count = 0, max, next = new Promise(), solver;
+    max = arguments.length;
+    solver = next.defer();
+    function finished() {
+      count += 1;
+      if (count !== max) {
+        return;
+      }
+      if (errors.length > 0) {
+        return solver.reject.apply(solver, errors);
+      }
+      return solver.resolve.apply(solver, results);
+    }
+    Array.prototype.forEach.call(arguments, function (item, i) {
+      Promise.when(item).done(function (answer) {
+        results[i] = answer;
+        return finished();
+      }).fail(function (answer) {
+        errors[i] = answer;
+        return finished();
+      });
+    });
+    return next;
+  };
+
+  /**
+   * defer([callback]): Promise
+   *
+   * Set the promise to the 'running' state. If `callback` is a function, then
+   * it will be executed with a solver as first parameter and returns the
+   * promise.  Else it returns the promise solver.
+   *
+   * @method defer
+   * @param  {Function} [callback] The callback to execute
+   * @return {Promise,Object} The promise or the promise solver
+   */
+  Promise.prototype.defer = function (callback) {
+    var that = this;
+    switch (this._state) {
+    case "running":
+    case "resolved":
+    case "rejected":
+      throw new Error("Promise().defer(): Already " + this._state);
+    default:
+      break;
+    }
+    function createSolver(promise) {
+      return {
+        "resolve": function () {
+          if (promise._state !== "resolved" && promise._state !== "rejected") {
+            promise._state = "resolved";
+            promise._answers = arguments;
+            promise._onResolve.forEach(function (callback) {
+              setTimeout(function () {
+                callback.apply(that, promise._answers);
+              });
+            });
+            // free the memory
+            promise._onResolve = undefined;
+            promise._onReject = undefined;
+            promise._onProgress = undefined;
+          }
+        },
+        "reject": function () {
+          if (promise._state !== "resolved" && promise._state !== "rejected") {
+            promise._state = "rejected";
+            promise._answers = arguments;
+            promise._onReject.forEach(function (callback) {
+              setTimeout(function () {
+                callback.apply(that, promise._answers);
+              });
+            });
+            // free the memory
+            promise._onResolve = undefined;
+            promise._onReject = undefined;
+            promise._onProgress = undefined;
+          }
+        },
+        "notify": function () {
+          if (promise._onProgress) {
+            var answers = arguments;
+            promise._onProgress.forEach(function (callback) {
+              callback.apply(that, answers);
+            });
+          }
+        }
+      };
+    }
+    this._state = "running";
+    if (typeof callback === 'function') {
+      setTimeout(function () {
+        callback(createSolver(that));
+      });
+      return this;
+    }
+    return createSolver(this);
+  };
+
+  /**
+   * done(callback): Promise
+   *
+   * Call the callback on resolve.
+   *
+   *     Promise.when(1).
+   *       done(function (one) { return one + 1; }).
+   *       done(console.log); // shows 1
+   *
+   * @method done
+   * @param  {Function} callback The callback to call on resolve
+   * @return {Promise} This promise
+   */
+  Promise.prototype.done = function (callback) {
+    var that = this;
+    if (typeof callback !== 'function') {
+      return this;
+    }
+    switch (this._state) {
+    case "resolved":
+      setTimeout(function () {
+        callback.apply(that, that._answers);
+      });
+      break;
+    case "rejected":
+      break;
+    default:
+      this._onResolve.push(callback);
+      break;
+    }
+    return this;
+  };
+
+  /**
+   * fail(callback): Promise
+   *
+   * Call the callback on reject.
+   *
+   *     promisedTypeError().
+   *       fail(function (e) { name_error(); }).
+   *       fail(console.log); // shows TypeError
+   *
+   * @method fail
+   * @param  {Function} callback The callback to call on reject
+   * @return {Promise} This promise
+   */
+  Promise.prototype.fail = function (callback) {
+    var that = this;
+    if (typeof callback !== 'function') {
+      return this;
+    }
+    switch (this._state) {
+    case "rejected":
+      setTimeout(function () {
+        callback.apply(that, that._answers);
+      });
+      break;
+    case "resolved":
+      break;
+    default:
+      this._onReject.push(callback);
+      break;
+    }
+    return this;
+  };
+
+  /**
+   * firstDone(*items): Promise
+   *
+   * Resolve the promise only when one item is resolved. The item type must be
+   * like the item parameter of the `when` static method.
+   *
+   *     Promise.first(Promise.delay(100), 'b').then(console.log); // shows 'b'
+   *
+   * @param  {Any} *items The items to use
+   * @return {Promise} The promise
+   */
+  function firstResolved() { // *promises
+    var next = new Promise(), solver = next.defer(), count = arguments.length;
+    Array.prototype.forEach.call(arguments, function (item) {
+      Promise.when(item).done(solver.resolve).fail(function (error) {
+        count -= 1;
+        if (count === 0) {
+          solver.reject(error);
+        }
+      });
+    });
+    return next;
+  }
+
+  ////////////////////////////////////////////////////////////
   // Storage
 
   /**
@@ -525,12 +769,66 @@
     };
 
     //////////////////////////////
+    // Tool
+
+    /**
+     * Adds a job to JIO and return a promise
+     *
+     * @method newJob
+     * @param  {String} method The JIO method
+     * @param  {Object} storage_spec The storage to use
+     * @param  {Object} doc The document informations
+     * @param  {Object} option The additional options
+     * @return {Promise} The promise
+     */
+    that.newJob = function (method, storage_spec, doc, option) {
+      var p = new Promise(), solver = p.solver();
+      that.addJob(
+        method,
+        storage_spec,
+        doc,
+        option,
+        solver.resolve,
+        solver.reject
+      );
+      return p;
+    };
+
+    /**
+     * Sends a command to all sub storages, returns the first received response.
+     *
+     * @method sendToAllAndGetFirstResolved
+     * @param  {String} method The method to send
+     * @param  {Object} doc The document object
+     * @param  {Object} option The option object
+     * @return {Promise} The promise
+     */
+    that.sendToAllAndGetFirstResolved = function (method, doc, option) {
+      return firstResolved.apply(
+        null,
+        spec.storage_list.map(function (storage_spec) {
+          return that.newJob(method, storage_spec, doc, option);
+        })
+      );
+    };
+
+    //////////////////////////////
     // JIO Commands
 
+    /**
+     * Post a document to all sub storages, returns the first received.
+     *
+     * @method post
+     * @param  {Command} command The JIO command
+     */
     that.post = function (command) {
-      var metadata, options;
-      metadata = command.cloneDoc();
-      options = command.cloneOptions();
+      that.sendToAll('post', command.cloneDoc(), command.cloneOption()).
+        done(that.success).
+        fail(function (err) {
+          err.message = "Unable to post";
+          that.error(err);
+        });
+      that.end();
     };
 
     return that;
