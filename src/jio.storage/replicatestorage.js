@@ -779,7 +779,7 @@
      * @return {Promise} The promise
      */
     that.newJob = function (method, storage_spec, doc, option) {
-      var p = new Promise(), solver = p.solver();
+      var p = new Promise(), solver = p.defer();
       that.addJob(
         method,
         storage_spec,
@@ -819,12 +819,14 @@
      * @param  {Command} command The JIO command
      */
     that.post = function (command) {
-      that.sendToAll('post', command.cloneDoc(), command.cloneOption()).
-        done(that.success).
-        fail(function (err) {
-          err.message = "Unable to post";
-          that.error(err);
-        });
+      that.sendToAllAndGetFirstResolved(
+        'post',
+        command.cloneDoc(),
+        command.cloneOption()
+      ).done(that.success).fail(function (err) {
+        err.message = "Unable to post";
+        that.error(err);
+      });
       that.end();
     };
 
