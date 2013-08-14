@@ -101,8 +101,23 @@
    * @return {Number} if a < b: -1, if a > b: 1, else 0
    */
   actions.ld = function compareAsDate(a, b) {
+    if (a < 0) {
+      a = NaN;
+    }
+    if (b < 1) {
+      b = NaN;
+    }
     a = new Date(a);
     b = new Date(b);
+    if (isNaN(a.getTime())) {
+      if (isNaN(b.getTime())) {
+        return 0;
+      }
+      return -1;
+    }
+    if (isNaN(b.getTime())) {
+      return 1;
+    }
     return a < b ? -1 : a > b ? 1 : 0;
   };
   actions['lastest date'] = actions.ld;
@@ -217,21 +232,6 @@
   };
   actions['shortest list'] = actions.sl;
 
-  actions.ls = function compareLengthAsString(a, b) {
-    if (a === undefined || a === null) {
-      a = 0;
-    } else {
-      a = a.toString().length;
-    }
-    if (b === undefined || b === null) {
-      b = 0;
-    } else {
-      b = b.toString().length;
-    }
-    return a < b ? -1 : a > b ? 1 : 0;
-  };
-  actions['longest string'] = actions.ls;
-
 
   /**
    * Comparision function to compare elements as string length.  This function
@@ -245,6 +245,13 @@
    * @param  {Any} b The second value
    * @return {Number} if a < b: -1, if a > b: 1, else 0
    */
+  actions.ls = function compareLengthAsString(a, b) {
+    a = a.toString().length;
+    b = b.toString().length;
+    return a < b ? -1 : a > b ? 1 : 0;
+  };
+  actions['longest string'] = actions.ls;
+
   actions.ss = function (a, b) {
     return -actions.ls(a, b);
   };
