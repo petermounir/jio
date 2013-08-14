@@ -717,8 +717,9 @@
   function firstResolved() { // *promises
     var next = new Promise(), solver = next.defer(), count = arguments.length;
     Array.prototype.forEach.call(arguments, function (item) {
-      Promise.when(item).done(solver.resolve).fail(function (error) {
+      Promise.when(item).always(function () {
         count -= 1;
+      }).done(solver.resolve).fail(function (error) {
         if (count === 0) {
           solver.reject(error);
         }
