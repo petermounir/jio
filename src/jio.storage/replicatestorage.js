@@ -531,45 +531,6 @@
   };
 
   /**
-   * all(*items): Promise
-   *
-   * Resolve the promise only when item are resolved. The item type must be like
-   * the item parameter of the `when` static method.
-   *
-   *     Promise.all(Promise.when('a'), 'b').then(console.log); // shows 'a b'
-   *
-   * @method all
-   * @static
-   * @param  {Any} *items The items to use
-   * @return {Promise} The promise
-   */
-  Promise.all = function () { // *promises
-    var results = [], errors = [], count = 0, max, next = new Promise(), solver;
-    max = arguments.length;
-    solver = next.defer();
-    function finished() {
-      count += 1;
-      if (count !== max) {
-        return;
-      }
-      if (errors.length > 0) {
-        return solver.reject.apply(solver, errors);
-      }
-      return solver.resolve.apply(solver, results);
-    }
-    Array.prototype.forEach.call(arguments, function (item, i) {
-      Promise.when(item).done(function (answer) {
-        results[i] = answer;
-        return finished();
-      }).fail(function (answer) {
-        errors[i] = answer;
-        return finished();
-      });
-    });
-    return next;
-  };
-
-  /**
    * defer([callback]): Promise
    *
    * Set the promise to the 'running' state. If `callback` is a function, then
