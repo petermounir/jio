@@ -670,6 +670,40 @@
   };
 
   /**
+   * always(callback): Promise
+   *
+   * Call the callback on resolve or on reject.
+   *
+   *     sayHello().
+   *       done(iAnswer).
+   *       fail(iHeardNothing).
+   *       always(iKeepWalkingAnyway);
+   *
+   * @method always
+   * @param  {Function} callback The callback to call on resolve or on reject
+   * @return {Promise} This promise
+   */
+  Promise.prototype.always = function (callback) {
+    var that = this;
+    if (typeof callback !== 'function') {
+      return this;
+    }
+    switch (this._state) {
+    case "resolved":
+    case "rejected":
+      setTimeout(function () {
+        callback.apply(that, that._answers);
+      });
+      break;
+    default:
+      that._onReject.push(callback);
+      that._onResolve.push(callback);
+      break;
+    }
+    return this;
+  };
+
+  /**
    * firstDone(*items): Promise
    *
    * Resolve the promise only when one item is resolved. The item type must be
