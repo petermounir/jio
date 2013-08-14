@@ -49,6 +49,8 @@
     'Text': 'Text'
   };
 
+  ////////////////////////////////////////////////////////////
+  // replicate storage tools
 
   /**
    * Returns the number with the lowest value
@@ -85,6 +87,19 @@
 
   // initialize actions
 
+  /**
+   * Comparison function to compare element as date.  This function can be used
+   * in the Array.prototype.sort method.
+   *
+   *     0 = 'Thu Jan 01 1970 01:00:00 GMT+0100 (CET)'
+   *     '2012' < 2013
+   *     'oesrucah' = 'srcheasu'
+   *     'abrebcu' < 0
+   *
+   * @param  {Any} a The first value
+   * @param  {Any} b The second value
+   * @return {Number} if a < b: -1, if a > b: 1, else 0
+   */
   actions.ld = function compareAsDate(a, b) {
     a = new Date(a);
     b = new Date(b);
@@ -97,6 +112,17 @@
   };
   actions['earliest date'] = actions.ed;
 
+  /**
+   * Comparison function to compare elements as numbers.  This function can be
+   * used in the Array.prototype.sort method.
+   *
+   *     -1 < 2
+   *     'a' < 0
+   *
+   * @param  {Any} a The first value
+   * @param  {Any} b The second value
+   * @return {Number} if a < b: -1, if a > b: 1, else 0
+   */
   actions.gn = function compareAsNumber(a, b) {
     a = parseFloat(a);
     b = parseFloat(b);
@@ -124,6 +150,19 @@
   };
   actions['lowest number'] = actions.ln;
 
+  /**
+   * Comparision function to compare elements as strings.  This function can be
+   * used in the Array.prototype.sort method.
+   *
+   *     'abc' < 'def'
+   *     ["abcd"] = 'abcd'
+   *     ["abc", "def"] = 'abc, def'
+   *     ["abc", {"content": "def"}] = 'abc, def'
+   *
+   * @param  {Any} a The first value
+   * @param  {Any} b The second value
+   * @return {Number} if a < b: -1, if a > b: 1, else 0
+   */
   actions.afs = function compareAsString(a, b) {
     if (Array.isArray(a)) {
       a = metadataArrayToContentArray(a).join(', ');
@@ -147,6 +186,17 @@
     return -actions.afs(a, b);
   };
 
+  /**
+   * Comparision function to compare elements as list length.  This function can
+   * be used in the Array.prototype.sort method.
+   *
+   *     ['abc'] = 'def'
+   *     ["zzz"] < ["a", "a"]
+   *
+   * @param  {Any} a The first value
+   * @param  {Any} b The second value
+   * @return {Number} if a < b: -1, if a > b: 1, else 0
+   */
   actions.ll = function compareLengthAsList(a, b) {
     if (!Array.isArray(a)) {
       a = 1;
@@ -182,6 +232,19 @@
   };
   actions['longest string'] = actions.ls;
 
+
+  /**
+   * Comparision function to compare elements as string length.  This function
+   * can be used in the Array.prototype.sort method.
+   *
+   *     ['abcdef'] < 'def'
+   *     'abc' = 'def'
+   *     'abcdef' > 'def'
+   *
+   * @param  {Any} a The first value
+   * @param  {Any} b The second value
+   * @return {Number} if a < b: -1, if a > b: 1, else 0
+   */
   actions.ss = function (a, b) {
     return -actions.ls(a, b);
   };
@@ -213,6 +276,8 @@
   /**
    * Comparison function to compare version string.  This function can be used
    * in the Array.prototype.sort method.
+   *
+   *     '1.9.3a' < '1.10.0' < '1.10.0a'
    *
    * @param  {String} a The first value to compare
    * @param  {String} b The second value to compare
@@ -246,6 +311,12 @@
   };
   actions['lowest version'] = actions.lv;
 
+  /**
+   * Returns the content type set in the metadata value.
+   *
+   * @param  {String,Number,Array,Object} meta The metadata value
+   * @return {String} The content type or undefined
+   */
   function getMetadataContentType(meta) {
     var i, res;
     if (!Array.isArray(meta)) {
@@ -264,6 +335,21 @@
     }
   }
 
+  /**
+   * Comparison function to find content type.  This function can be used in the
+   * Array.prototype.sort method.
+   *
+   *     'a' = 'bc'
+   *     'aeiouy' < 'text/plain'
+   *     'text/plain;charset=utf-8' = 'text/html'
+   *     ['a'] < 'text/html'
+   *     ['a', 'text/plain;charset=utf-8'] = 'text/html'
+   *     ['a', {"content": "text/plain;charset=utf-8"}] = 'text/html'
+   *
+   * @param  {String} a The first value to compare
+   * @param  {String} b The second value to compare
+   * @return {Number} if a < b: -1, if a > b: 1, else 0
+   */
   actions.contentType = function (a, b) {
     a = getMetadataContentType(a);
     b = getMetadataContentType(b);
@@ -280,6 +366,12 @@
   };
   actions['contains content type'] = actions.contentType;
 
+  /**
+   * Returns the DCMIType set in the metadata value.
+   *
+   * @param  {String,Number,Array,Object} meta The metadata value
+   * @return {String} The DCMIType or undefined
+   */
   function getMetadataDCMIType(meta) {
     var i, res;
     if (!Array.isArray(meta)) {
@@ -297,6 +389,21 @@
     }
   }
 
+  /**
+   * Comparison function to find DCMIType.  This function can be used in the
+   * Array.prototype.sort method.
+   *
+   *     'a' = 'bc'
+   *     'aeiouy' < 'text/plain'
+   *     'text/plain;charset=utf-8' = 'text/html'
+   *     ['a'] < 'text/html'
+   *     ['a', 'text/plain;charset=utf-8'] = 'text/html'
+   *     ['a', {"content": "text/plain;charset=utf-8"}] = 'text/html'
+   *
+   * @param  {String} a The first value to compare
+   * @param  {String} b The second value to compare
+   * @return {Number} if a < b: -1, if a > b: 1, else 0
+   */
   actions.DCMIType = function (a, b) {
     a = getMetadataDCMIType(a);
     b = getMetadataDCMIType(b);
@@ -313,6 +420,17 @@
   };
   actions['contains DCMIType vocabulary'] = actions.DCMIType;
 
+  /**
+   * Find the winner documents according to their metadata values.
+   *
+   * @param  {Array} documents A list of couples [document, score]
+   * @param  {String,Number,Array,Object} metadata The metadata key to use in
+   *         the document
+   * @param  {String} action The comparison action to use, if unknown then
+   *         do nothing
+   * @param  {Number} coef The number of point to give if a document wins
+   * @return {Array} The original documents list with a different score
+   */
   function runDocumentMetadataRound(documents, metadata, action, coef) {
     var i, res, winners = [0];
     for (i = 1; i < documents.length; i += 1) {
@@ -329,6 +447,15 @@
     return documents;
   }
 
+  /**
+   * Converts a document list into a list of couples [document, score (0)] and
+   * runs some actions that will increase their score. The winner is the
+   * document with the greatest score.
+   *
+   * @param  {Array} documents A list of document metadata
+   * @param  {Object} conditions A dict that contains action on metadata key
+   * @return {Array} The original documents list with scores
+   */
   function runDocumentMetadataBattle(documents, conditions) {
     var i, coef, action;
     for (i = 0; i < documents.length; i += 1) {
@@ -354,6 +481,14 @@
     return documents;
   }
 
+  ////////////////////////////////////////////////////////////
+  // Storage
+
+  /**
+   * A Storage for data duplication and storage synchronisation.
+   *
+   * @class ReplicateStorage
+   */
   function replicateStorage(spec, my) {
     var error, priv = {}, that = my.basicStorage(spec, my);
 
