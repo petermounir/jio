@@ -19,7 +19,7 @@
   module("ReplicateStorage");
 
   test("Substorage management", function () {
-    expect(1);
+    expect(2);
     var clock = sinon.useFakeTimers(), jio = jIO.newJio({
       "type": "replicate",
       "storage_list": [{
@@ -31,13 +31,30 @@
     });
 
     // post without id
-    jio.post({}, function (err, response) {
-      deepEqual(err || response, {
-        "id": "document id a",
-        "ok": true
-      }, "2 Storages DONE + FAIL = DONE");
+    jio.post({}, util.spyJioCallback("value", {
+      "id": "document id a",
+      "ok": true
+    }, "2 Storages DONE + FAIL = DONE"));
+    clock.tick(1000);
+
+    util.closeAndcleanUpJio(jio);
+
+    jio = jIO.newJio({
+      "type": "replicate",
+      "storage_list": [{
+        "type": "dummy",
+        "mode": "always fail",
+        "key": "1"
+      }, {
+        "type": "dummy",
+        "mode": "always fail",
+        "key": "2"
+      }]
     });
-    clock.tick(10000);
+
+    jio.post({
+    }, util.spyJioCallback("status", 409, "2 Storages FAIL + FAIL = FAIL"));
+    clock.tick(1000);
 
     util.closeAndcleanUpJio(jio);
   });
