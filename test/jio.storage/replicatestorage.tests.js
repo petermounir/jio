@@ -114,4 +114,54 @@
     util.closeAndcleanUpJio(jio);
   });
 
+  test("Syncronization", function () {
+    var clock = sinon.useFakeTimers(), jio = jIO.newJio({
+      "type": "replicate",
+      "conditions": {
+        "modified": "latest date"
+      },
+      "storage_list": [{
+        "type": "local",
+        "username": "replicatestorage",
+        "application_name": "sync 1"
+      }, {
+        "type": "local",
+        "username": "replicatestorage",
+        "application_name": "sync 2"
+      }]
+    }), sync_jio1 = jIO.newJio({
+      "type": "local",
+      "username": "replicatestorage",
+      "application_name": "sync 1"
+    }), sync_jio2 = jIO.newJio({
+      "type": "local",
+      "username": "replicatestorage",
+      "application_name": "sync 2"
+    });
+
+    sync_jio1.put({"_id": "a", "modified": 123});
+    sync_jio2.put({"_id": "a", "modified": 234});
+    clock.tick(1000);
+
+    sync_jio1.putAttachment({
+      "_id": "a",
+      "_attachment": "body",
+      "_data": "one",
+      "_mimetype": "text/plain"
+    });
+    sync_jio2.putAttachment({
+      "_id": "a",
+      "_attachment": "content",
+      "_data": "<p>two</p>",
+      "_mimetype": "text/html"
+    });
+    clock.tick(1000);
+
+    jio.repair({"_id": "a"}, util.spyJioCallback("value", {
+    }, "Synchronization"));
+    clock.tick(1000);
+
+    util.closeAndcleanUpJio(jio);
+  });
+
 }));
