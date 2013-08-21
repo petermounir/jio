@@ -76,4 +76,42 @@
     util.closeAndcleanUpJio(jio);
   });
 
+  test("Scenario", function () {
+    expect(3);
+    var clock = sinon.useFakeTimers(), jio = jIO.newJio({
+      "type": "replicate",
+      "storage_list": [{
+        "type": "local",
+        "username": "replicatestorage",
+        "application_name": "scenar 1"
+      }, {
+        "type": "local",
+        "username": "replicatestorage",
+        "application_name": "scenar 2"
+      }]
+    });
+
+    // post with id
+    jio.post({"_id": "a"}, util.spyJioCallback("value", {
+      "id": "a",
+      "ok": true
+    }, "Post with document id -> OK"));
+    clock.tick(1000);
+
+    // put
+    jio.put({"_id": "a"}, util.spyJioCallback("value", {
+      "id": "a",
+      "ok": true
+    }, "Put same document -> OK"));
+    clock.tick(1000);
+
+    // post same id
+    jio.post({
+      "_id": "a"
+    }, util.spyJioCallback("status", 409, "Post with document id -> Conflict"));
+    clock.tick(1000);
+
+    util.closeAndcleanUpJio(jio);
+  });
+
 }));
