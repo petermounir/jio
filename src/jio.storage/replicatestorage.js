@@ -834,21 +834,107 @@
     // JIO Commands
 
     /**
-     * Post a document to all sub storages, returns the first received.
+     * A generic command to just delegate the commands to the sub storages and
+     * end.
+     *
+     * @param  {String} method The JIO method
+     * @param  {Command} command The JIO command
+     */
+    that.delegateToSubStorage = function (method, command) {
+      that.sendToAllAndGetFirstResolved(
+        method,
+        command.cloneDoc(),
+        command.cloneOption()
+      ).done(that.success).fail(function (err) {
+        err.message = "Unable to " + method;
+        that.error(err);
+      });
+      that.end();
+    };
+
+    /**
+     * Post a document to all sub storages, returns the first received response.
      *
      * @method post
      * @param  {Command} command The JIO command
      */
     that.post = function (command) {
-      that.sendToAllAndGetFirstResolved(
-        'post',
-        command.cloneDoc(),
-        command.cloneOption()
-      ).done(that.success).fail(function (err) {
-        err.message = "Unable to post";
-        that.error(err);
-      });
-      that.end();
+      that.delegateToSubStorage('post', command);
+    };
+
+    /**
+     * Put a document to all sub storages, returns the first received response.
+     *
+     * @method put
+     * @param  {Command} command The JIO command
+     */
+    that.put = function (command) {
+      that.delegateToSubStorage('put', command);
+    };
+
+    /**
+     * Get a document from one of the sub storages, returns the first received.
+     *
+     * @method get
+     * @param  {Command} command The JIO command
+     */
+    that.get = function (command) {
+      that.delegateToSubStorage('get', command);
+    };
+
+    /**
+     * Remove a document from all the sub storages, returns the first received
+     * response.
+     *
+     * @method remove
+     * @param  {Command} command The JIO command
+     */
+    that.remove = function (command) {
+      that.delegateToSubStorage('remove', command);
+    };
+
+    /**
+     * Put an attachment to all the sub storages, returns the first received
+     * response.
+     *
+     * @method putAttachment
+     * @param  {Command} command The JIO command
+     */
+    that.putAttachment = function (command) {
+      that.delegateToSubStorage('putAttachment', command);
+    };
+
+    /**
+     * Get an attachment from one of the sub storages, returns the first
+     * received.
+     *
+     * @method getAttachment
+     * @param  {Command} command The JIO command
+     */
+    that.getAttachment = function (command) {
+      that.delegateToSubStorage('getAttachment', command);
+    };
+
+    /**
+     * Remove an attachment from all the sub storages, returns the first
+     * received response.
+     *
+     * @method removeAttachment
+     * @param  {Command} command The JIO command
+     */
+    that.removeAttachment = function (command) {
+      that.delegateToSubStorage('removeAttachment', command);
+    };
+
+    /**
+     * Retrieve a list of document from all the sub storages, returns the first
+     * received response.
+     *
+     * @method allDocs
+     * @param  {Command} command The JIO command
+     */
+    that.allDocs = function (command) {
+      that.delegateToSubStorage('allDocs', command);
     };
 
     return that;
