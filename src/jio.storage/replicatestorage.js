@@ -29,7 +29,7 @@
 // }
 
 // conditions:
-// - lastest date (ld)/ earliest date (ed)
+// - latest date (ld)/ earliest date (ed)
 // - greatest number (gn) / lowest number (ln) // 2 > 1
 // - alphabeticaly farthest string (afs) / alph.. closest string (acs)
 // - greatest version (gv) / lowest version (lv) // '1.10c' > '1.9c'
@@ -138,7 +138,7 @@
     }
     return a < b ? -1 : a > b ? 1 : 0;
   };
-  actions['lastest date'] = actions.ld;
+  actions['latest date'] = actions.ld;
 
   actions.ed = function (a, b) {
     return -actions.ld(a, b);
