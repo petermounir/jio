@@ -459,7 +459,10 @@
   function runDocumentMetadataRound(documents, metadata, action, coef) {
     var i, res, winners = [0];
     for (i = 1; i < documents.length; i += 1) {
-      res = actions[action](documents[winners[0]][0], documents[i][0]);
+      res = actions[action](
+        documents[winners[0]][0][metadata],
+        documents[i][0][metadata]
+      );
       if (res === 0) {
         winners[winners.length] = i;
       } else if (res < 0) {
