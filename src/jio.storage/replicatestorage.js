@@ -509,6 +509,105 @@
     return documents;
   }
 
+  function findAWinner(documents) {
+    var i, res, winner = 0;
+    for (i = 1; i < documents.length; i += 1) {
+      if (documents[winner][1] - documents[i][1] < 0) {
+        winner = i;
+      }
+    }
+    return winner;
+  }
+
+  function findLoosers(documents) {
+    var i, res, winners = [0], loosers = [];
+    for (i = 1; i < documents.length; i += 1) {
+      res = documents[winners[0]][1] - documents[i][1];
+      if (res === 0) {
+        winners[winners.length] = i;
+      } else if (res < 0) {
+        loosers = loosers.concat(winners);
+        winners = [i];
+      }
+    }
+    return loosers;
+  }
+
+  /**
+   * Convert a list of errors from JIO to an replicate storage error.
+   *
+   * @param  {String} method The JIO method
+   * @param  {Array} err_list The JIO error list
+   * @return {Object} The new JIO error
+   */
+  function convertJIOErrorListToOne(method, err_list) {
+    // Cannot repair one of the sub storages
+    var i, err = {
+      "message": "Unable to " + method,
+      "error_list": err_list
+    };
+    for (i = 0; i < err_list.length; i += 1) {
+      if (err_list[i] !== undefined) {
+        break;
+      }
+    }
+    err.status = err_list[i].status;
+    err.statusText = err_list[i].statusText;
+    err.error = err_list[i].error;
+    err.reason = err_list[i].reason;
+    return err;
+  }
+
+  function resolveAttachmentDependencies(documents, winner, loosers) {
+    var i, k, winner_attachments, looser_attachments, attachments = {
+      // attachment name : {
+      //   action: "put" , "remove"
+      //   where: [storage_index, ...]
+      // }
+    };
+    if (documents[winner]._attachments) {
+      winner_attachments = documents[winner][0]._attachments;
+    } else {
+      winner_attachments = {};
+    }
+    // browse loosers and their attachments
+    for (i = 0; i < loosers.length; i += 1) {
+      console.log(loosers[i]);
+      console.log(documents[loosers[i]][0]);
+      if (documents[loosers[i]][0]._attachments) {
+        looser_attachments = documents[loosers[i]][0]._attachments;
+        console.log(looser_attachments);
+        for (k in looser_attachments) {
+          if (looser_attachments.hasOwnProperty(k)) {
+            console.log(winner_attachments);
+            console.log(winner_attachments[k]);
+            if (winner_attachments[k]) {
+              if (winner_attachments[k].digest !==
+                  looser_attachments[k].digest ||
+                  winner_attachments[k].length !==
+                  looser_attachments[k].length) {
+                attachments[k] = attachments[k] || {
+                  "action": "put",
+                  "where": []
+                };
+                attachments[k].where.push(i);
+              }
+            } else {
+              attachments[k] = attachments[k] || {
+                "action": "remove",
+                "where": []
+              };
+              attachments[k].where.push(i);
+            }
+          }
+        }
+      }
+    }
+    // browse winner attachments
+    // XXX browser winner attachments
+    return attachments;
+  }
+
   ////////////////////////////////////////////////////////////
   // Class Tools
 
@@ -549,6 +648,102 @@
     var p = new Promise().done(onSuccess).fail(onError);
     p.defer().resolve(item);
     return p;
+  };
+
+  /**
+   * all(items): Promise
+   *
+   * Resolve the promise. The item type must be like the item parameter of the
+   * `when` static method.
+   *
+   *     Promise.all([promisedError, 'b']).
+   *       then(console.log); // shows [Error, 'b']
+   *
+   * @method all
+   * @static
+   * @param  {Array} items The items to use
+   * @return {Promise} The promise
+   */
+  Promise.all = function (items) {
+    var array = [], count = 0, next = new Promise(), solver;
+    solver = next.defer();
+    function succeed(i) {
+      return function (answer) {
+        array[i] = answer;
+        count += 1;
+        if (count !== items.length) {
+          return;
+        }
+        return solver.resolve(array);
+      };
+    }
+    items.forEach(function (item, i) {
+      Promise.when(item).done(succeed(i)).fail(succeed(i));
+    });
+    return next;
+  };
+
+  /**
+   * allOrNone(items): Promise
+   *
+   * Resolve the promise only when all items are resolved. If one item fails,
+   * then reject. The item type must be like the item parameter of the `when`
+   * static method.
+   *
+   *     Promise.allOrNone([Promise.when('a'), 'b']).
+   *       then(console.log); // shows ['a', 'b']
+   *
+   * @method allOrNone
+   * @static
+   * @param  {Array} items The items to use
+   * @return {Promise} The promise
+   */
+  Promise.allOrNone = function (items) {
+    var array = [], count = 0, next = new Promise(), solver;
+    solver = next.defer();
+    items.forEach(function (item, i) {
+      Promise.when(item).done(function (answer) {
+        array[i] = answer;
+        count += 1;
+        if (count !== items.length) {
+          return;
+        }
+        return solver.resolve(array);
+      }).fail(function (answer) {
+        return solver.reject(answer);
+      });
+    });
+    return next;
+  };
+
+  /**
+   * any(items): Promise
+   *
+   * Resolve the promise only when one of the items is resolved. The item type
+   * must be like the item parameter of the `when` static method.
+   *
+   *     Promise.any([promisedError, Promise.delay(10)]).
+   *       then(console.log); // shows 10
+   *
+   * @method any
+   * @static
+   * @param  {Array} items The items to use
+   * @return {Promise} The promise
+   */
+  Promise.any = function (items) {
+    var count = 0, next = new Promise(), solver;
+    solver = next.defer();
+    items.forEach(function (item, i) {
+      Promise.when(item).done(function (answer) {
+        return solver.resolve(answer);
+      }).fail(function (answer) {
+        count += 1;
+        if (count === items.length) {
+          return solver.reject(answer);
+        }
+      });
+    });
+    return next;
   };
 
   /**
@@ -724,31 +919,6 @@
     return this;
   };
 
-  /**
-   * firstDone(*items): Promise
-   *
-   * Resolve the promise only when one item is resolved. The item type must be
-   * like the item parameter of the `when` static method.
-   *
-   *     Promise.first(Promise.delay(100), 'b').then(console.log); // shows 'b'
-   *
-   * @param  {Any} *items The items to use
-   * @return {Promise} The promise
-   */
-  function firstResolved() { // *promises
-    var next = new Promise(), solver = next.defer(), count = arguments.length;
-    Array.prototype.forEach.call(arguments, function (item) {
-      Promise.when(item).always(function () {
-        count -= 1;
-      }).done(solver.resolve).fail(function (error) {
-        if (count === 0) {
-          solver.reject(error);
-        }
-      });
-    });
-    return next;
-  }
-
   ////////////////////////////////////////////////////////////
   // Storage
 
@@ -822,12 +992,74 @@
      * @return {Promise} The promise
      */
     that.sendToAllAndGetFirstResolved = function (method, doc, option) {
-      return firstResolved.apply(
-        null,
-        spec.storage_list.map(function (storage_spec) {
-          return that.newJob(method, storage_spec, doc, option);
-        })
-      );
+      return Promise.any(spec.storage_list.map(function (storage_spec) {
+        return that.newJob(method, storage_spec, doc, option);
+      }));
+    };
+
+    /**
+     * Sends a command to all sub storages, returns the all received responses.
+     *
+     * @method sendToAllAndGetAllOrNone
+     * @param  {String} method The method to send
+     * @param  {Object} doc The document object
+     * @param  {Object} option The option object
+     * @return {Promise} The promise
+     */
+    that.sendToAllAndGetAllOrNone = function (method, doc, option) {
+      return Promise.allOrNone(spec.storage_list.map(function (storage_spec) {
+        return that.newJob(method, storage_spec, doc, option);
+      }));
+    };
+
+    /**
+     * A generic method to detect and/or repair incoherent sub storage state.
+     *
+     * @param  {String} method The JIO method
+     * @param  {Command} command The JIO command
+     */
+    priv.repair = function (method, command) {
+      var state = 'success';
+      function getSubDocumentsAndAttachments() {
+        var promise = new Promise(), solver = promise.defer();
+        // send repair to all sub storages
+        that.sendToAllAndGetAllOrNone(
+          method,
+          command.cloneDoc(),
+          command.cloneOption()
+        ).done(function (r) {
+          // retreive the document from the sub storages
+          that.sendToAllAndGetAllOrNone("get",command.cloneDoc(),{
+          }).done(function (documents) {
+            var winner, loosers, k, attachments;
+            runDocumentMetadataBattle(documents, spec.conditions);
+            winner = findAWinner(documents);
+            loosers = findLoosers(documents);
+            // compare winner attachments with loosers ones
+            attachments = resolveAttachmentDependencies(
+              documents,
+              winner,
+              loosers
+            );
+            console.log(attachments);
+          }).fail(function (err) {
+            // Cannot retreive all sub documents
+            err.message = "Unable to " + method;
+            solver.reject(err);
+          });
+        }).fail(function (err) {
+          // Cannot repair one of the sub storages
+          err.message = "Unable to " + method;
+          solver.reject(err);
+        });
+        return promise;
+      }
+      function putDocumentsAndAttachments(param) {
+        console.log(param);
+      }
+      getSubDocumentsAndAttachments().
+        done(putDocumentsAndAttachments).
+        fail(that.error);
     };
 
     //////////////////////////////
@@ -935,6 +1167,26 @@
      */
     that.allDocs = function (command) {
       that.delegateToSubStorage('allDocs', command);
+    };
+
+    /**
+     * Check if the sub storages are not synchronized.
+     *
+     * @method check
+     * @param  {Command} command The JIO command
+     */
+    that.check = function (command) {
+      priv.repair('check', command);
+    };
+
+    /**
+     * Synchronize document on all the sub storages.
+     *
+     * @method repair
+     * @param  {Command} command The JIO command
+     */
+    that.repair = function (command) {
+      priv.repair('repair', command);
     };
 
     return that;
