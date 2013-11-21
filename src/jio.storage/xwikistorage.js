@@ -9,7 +9,8 @@
     XMLHttpRequest: true,
     Blob: true,
     FormData: true,
-    window: true
+    window: true,
+    setTimeout: true
 */
 /**
  * JIO XWiki Storage. Type = 'xwiki'.
@@ -86,7 +87,7 @@
                 priv.xwikiurl + "]",
             "reason": cause
           });
-        },
+        }
       });
     };
 
@@ -125,7 +126,7 @@
     };
 
     priv.isBlob = function (potentialBlob) {
-      return typeof (potentialBlob) !== 'undefined' &&
+      return potentialBlob !== undefined &&
         potentialBlob.toString() === "[object Blob]";
     };
 
@@ -490,7 +491,7 @@
       return {
         "username": priv.username,
         "language": priv.language,
-        "xwikiurl": priv.xwikiurl,
+        "xwikiurl": priv.xwikiurl
       };
     };
 
@@ -718,7 +719,7 @@
     return that;
   };
 
-  if (typeof (define) === 'function' && define.amd) {
+  if ((typeof define) === 'function' && define.amd) {
     define(['jquery', 'jio'], function (jquery, jIO) {
       $ = jquery;
       jIO.addStorageType('xwiki', store);

@@ -772,6 +772,7 @@
       }
 
       function myCallback(response) {
+        return undefined;
       }
 
       that.XHRwrapper(command, docId, '', 'GET', mime, '', false, false,
@@ -823,6 +824,7 @@
       function removeAttachment() {
         that.XHRwrapper(command, docId, attachId, 'DELETE', mime, '', true,
           true, function (reponse) {
+            return undefined;
           }
           );
       }

@@ -488,7 +488,7 @@
       doc = command.cloneDoc();
       option = command.cloneOption();
       priv.send('getAttachment', doc, option, function (err, response) {
-        var i, k;
+        var i;
         if (err) {
           err.message = "Unable to get attachment";
           delete err.index;

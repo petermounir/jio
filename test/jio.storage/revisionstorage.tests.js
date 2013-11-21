@@ -1,6 +1,6 @@
 /*jslint indent: 2, maxlen: 80, nomen: true */
-/*global define, jIO, jio_tests, hex_sha256, window, test, ok, deepEqual, sinon,
-  expect */
+/*global define, jIO, jio_tests, hex_sha256, window,
+         test, ok, deepEqual, sinon, expect, module */
 
 // define([module_name], [dependencies], module);
 (function (dependencies, module) {
@@ -640,7 +640,7 @@
     o.rev_hash = generateRevisionHash({
       "_id": "doc1",
       "_data": "abc",
-      "_attachment": "attmt1",
+      "_attachment": "attmt1"
     }, o.revisions);
     o.rev = "2-" + o.rev_hash;
     o.spy(o, "value",
@@ -685,7 +685,7 @@
     o.rev_hash = generateRevisionHash({
       "_id": "doc1",
       "_data": "def",
-      "_attachment": "attmt2",
+      "_attachment": "attmt2"
     }, o.revisions);
     o.rev = "3-" + o.rev_hash;
     o.spy(o, "value",
@@ -837,7 +837,7 @@
     o.jio.get({"_id": "get1", "_rev": "1-rev0"}, {
       "revs_info": true,
       "revs": true,
-      "conflicts": true,
+      "conflicts": true
     }, o.f);
     o.tick(o);
 
@@ -855,7 +855,7 @@
     o.jio.get({"_id": "get1", "_rev": "1-rev2"}, {
       "revs_info": true,
       "revs": true,
-      "conflicts": true,
+      "conflicts": true
     }, o.f);
     o.tick(o);
 
@@ -886,7 +886,7 @@
     }, {
       "revs_info": true,
       "revs": true,
-      "conflicts": true,
+      "conflicts": true
     }, o.f);
     o.tick(o);
 
@@ -899,7 +899,7 @@
     }, {
       "revs_info": true,
       "revs": true,
-      "conflicts": true,
+      "conflicts": true
     }, o.f);
     o.tick(o);
 
@@ -1016,7 +1016,7 @@
     // 4. remove existing attachment
     o.rev_hash = generateRevisionHash({
       "_id": "remove1",
-      "_attachment": "remove2",
+      "_attachment": "remove2"
     }, {"start": 2, "ids": ["oldrev", "veryoldrev"]});
     o.spy(o, "value", {
       "ok": true,
@@ -1204,7 +1204,7 @@
           "digest": "md5-2686969b0bc0fd9bc186146a1ecb09a7",
           "length": 7
         }
-      },
+      }
     };
     o.rows.rows[2].doc = {
       "_id": "yes",
@@ -1215,7 +1215,7 @@
           "digest": "md5-900bc885d7553375aec470198a9514f3",
           "length":  3
         }
-      },
+      }
     };
     o.spy(o, "value", o.rows, "allDocs + include docs");
     o.jio.allDocs({"include_docs": true}, function (err, response) {
@@ -1284,7 +1284,7 @@
     o.jio2.get({"_id": "sample1", "_rev": o.rev}, {
       "revs_info": true,
       "revs": true,
-      "conflicts": true,
+      "conflicts": true
     }, o.f);
     o.tick(o);
 

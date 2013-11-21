@@ -80,7 +80,7 @@ jIO.addStorageType('crypt', function (spec, my) {
       obj._wait = obj._wait || {};
       if (obj._wait[function_name]) {
         obj._wait[function_name] -= 1;
-        return function () {};
+        return function () { return undefined; };
       }
       // ok if undef or 0
       arglist = arglist || [];
@@ -97,7 +97,7 @@ jIO.addStorageType('crypt', function (spec, my) {
       obj._wait[function_name] = times;
     };
     async.end = function () {
-      async.call = function () {};
+      async.call = function () { return undefined; };
     };
     return async;
   };

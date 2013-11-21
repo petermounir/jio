@@ -1,5 +1,5 @@
 /*jslint indent: 2, maxlen: 80, nomen: true */
-/*global define, jIO, jio_tests, test, ok, deepEqual, sinon */
+/*global define, jIO, jio_tests, test, ok, deepEqual, sinon, module */
 
 // define([module_name], [dependencies], module);
 (function (dependencies, module) {
@@ -679,7 +679,7 @@
     }, "Get html metadata");
     o.jio.get({
       "_id": "{\"date\":\"2012-12-12\",\"language\":\"fr\"," +
-        "\"title\":\"Texte pour ce test\",\"type\":\"Text\"}",
+        "\"title\":\"Texte pour ce test\",\"type\":\"Text\"}"
     }, o.f);
     o.tick(o);
 

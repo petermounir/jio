@@ -1,5 +1,5 @@
 /*jslint indent: 2, maxlen: 80, nomen: true */
-/*global define, jIO, jio_tests, test, ok, sinon */
+/*global define, jIO, jio_tests, test, ok, sinon, module */
 
 // define([module_name], [dependencies], module);
 (function (dependencies, module) {

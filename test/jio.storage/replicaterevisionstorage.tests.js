@@ -1,6 +1,6 @@
 /*jslint indent: 2, maxlen: 80, nomen: true */
 /*global define, jIO, jio_tests, hex_sha256, test, ok, deepEqual, sinon,
-  expect */
+  expect, module */
 
 // define([module_name], [dependencies], module);
 (function (dependencies, module) {
@@ -792,7 +792,7 @@
       "children": [{
         "rev": "1-111",
         "status": "available",
-        "children": [],
+        "children": []
       }]
     };
     o.doc1_1 = {"_id": "doc1.1-111", "title": "A"};

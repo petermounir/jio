@@ -961,7 +961,7 @@
       };
       priv.send("allDocs", null, command.cloneOption(
       ), function (err, response) {
-        var i, j, row, selector, selected;
+        var i, row, selector, selected;
         if (err) {
           return that.error(err);
         }
