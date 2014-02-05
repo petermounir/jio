@@ -40,6 +40,9 @@
       "splitstorage":       "../src/jio.storage/splitstorage",
       "splitstorage_tests": "jio.storage/splitstorage.tests",
 
+      "dropboxstorage":       "../src/jio.storage/dropboxstorage",
+      "dropboxstorage_tests": "jio.storage/dropboxstorage.tests",
+
       "qunit":       "../lib/qunit/qunit",
       "sinon":       "../lib/sinon/sinon",
       "sinon_qunit": "../lib/sinon/sinon-qunit"
@@ -60,6 +63,7 @@
     "gidstorage_tests",
     "revisionstorage_tests",
     "replicaterevisionstorage_tests",
-    "splitstorage_tests"
+    "splitstorage_tests",
+    "dropboxstorage_tests"  
   ]);
 }());
