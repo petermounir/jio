@@ -14,16 +14,12 @@
   if (typeof define === 'function' && define.amd) {
     return define(dependencies, module);
   }
-  //   if (typeof exports === 'object') {
-  //     return module(exports, require('jio'), require('complex_queries'));
-  //   }
   module(jIO);
 }([
   'jio'
 ], function (jIO) {
   "use strict";
   var UPLOAD_URL = "https://api-content.dropbox.com/1/";
-  //     DEADLINE = 1451491200;
 
   /**
    * The JIO DropboxStorage extension
@@ -46,10 +42,7 @@
     }
     data.append(
       "file",
-      // new Blob([JSON.stringify(doc)], {type: "application/json"}),
-      // new Blob([doc], {type: "application/json"}),
       blob,
-      //       new Blob([], {type: "application/octet-stream"}),
       key
     );
 
@@ -57,16 +50,6 @@
       "type": "POST",
       "url": UPLOAD_URL + 'files/sandbox/' + path + '?access_token=' + this._access_token,
       "data": data
-      //     }).then(function (doc) {
-      //       if (doc !== null) {
-      //         command.success({"data": doc});
-      //       } else {
-      //         command.error(
-      //           "not_found",
-      //           "missing",
-      //           "Cannot find document"
-      //         );
-      //       }
     });
 
   };
@@ -151,7 +134,6 @@
     return jIO.util.ajax({
       "type": "GET",
       "url": download_url
-      //       "dataType": "blob"
     });
   };
 

@@ -154,25 +154,6 @@
           "status": 200,
           "statusText": "Ok"
         }, "Get, Check document");
-
-        //}).then(function () {
-        //
-        //  // post but document already exists
-        //  return jio.post({"_id": "post1", "title": "myPost2"});
-        //
-        //}).always(function (answer) {
-        //
-        //  deepEqual(answer, {
-        //    "error": "conflict",
-        //    "id": "post1",
-        //    "message": "Cannot create a new document",
-        //    "method": "post",
-        //    "reason": "document exists",
-        //    "result": "error",
-        //    "status": 409,
-        //    "statusText": "Conflict"
-        //  }, "Post but document already exists");
-
       })
 
     ]).always(start);
@@ -362,7 +343,7 @@
 
         deepEqual(answer, {
           "attachment": "putattmt2",
-          "digest": "sha256-4ea5c508a6566e76240543f8feb06fd457777be39549c4016436afda65d2330e", // hex_sha256("")
+          "digest": "sha256-4ea5c508a6566e76240543f8feb06fd457777be39549c4016436afda65d2330e",
           "id": "putattmt1",
           "method": "putAttachment",
           "result": "success",
@@ -541,7 +522,7 @@
     o.date_a = new Date(0);
     o.date_b = new Date();
 
-    // put some document before list them
+    // Clean storage and put some document before listing them
     all([
       jio.allDocs()
         .then(function (document_list) {
@@ -693,235 +674,5 @@
       }).always(start);
 
   });
-
-  //test("Check & Repair", function () {
-  //  expect(18);
-  //  var o = {}, jio = jIO.createJIO({
-  //    "type": "dropbox",
-  //    "access_token": "v43SQLCEoi8AAAAAAAAAAVixCoMfDelgGj3NRPfEnqscAuNGp2LhoS8-GiAaDD4C"
-  //  }, {
-  //    "workspace": {}
-  //  });
-  //
-  //  stop();
-  //
-  //  o.putCorruptedDocuments = function () {
-  //    // put a document with a wrong attachment reference
-  //    util.json_local_storage.setItem(
-  //      "jio/localstorage/urepair/arepair/war",
-  //      {"_id": "war", "title": "b", "_attachments": {"aa": {}}}
-  //    );
-  //
-  //    // put a document with a wrong metadata
-  //    util.json_local_storage.setItem(
-  //      "jio/localstorage/urepair/arepair/meta",
-  //      {"_id": "meta", "title": ["b", ["c", {}], {"blue": "blue"}]}
-  //    );
-  //
-  //    // put a corrupted document
-  //    util.json_local_storage.setItem(
-  //      "jio/localstorage/urepair/arepair/cor",
-  //      "blue"
-  //    );
-  //  };
-  //
-  //  // put an unreferenced attachment
-  //  util.json_local_storage.setItem(
-  //    "jio/localstorage/urepair/arepair/unref/aa",
-  //    "attachment content"
-  //  );
-  //  o.putCorruptedDocuments();
-  //
-  //  all([
-  //    jio.check({"_id": "war"}),
-  //    jio.check({"_id": "meta"}),
-  //    jio.check({"_id": "cor"}),
-  //    jio.check({"_id": "inexistent"})
-  //  ]).always(function (answers) {
-  //
-  //    deepEqual(answers[0], {
-  //      "error": "conflict",
-  //      "id": "war",
-  //      "message": "Attachment \"aa\" of \"war\" is missing",
-  //      "method": "check",
-  //      "reason": "missing attachment",
-  //      "result": "error",
-  //      "status": 409,
-  //      "statusText": "Conflict"
-  //    }, "Check a document with one missing attachment");
-  //
-  //    deepEqual(answers[1], {
-  //      "error": "conflict",
-  //      "id": "meta",
-  //      "message": "Some metadata might be lost",
-  //      "method": "check",
-  //      "reason": "corrupted",
-  //      "result": "error",
-  //      "status": 409,
-  //      "statusText": "Conflict"
-  //    }, "Check document with wrong metadata");
-  //
-  //    deepEqual(answers[2], {
-  //      "error": "conflict",
-  //      "id": "cor",
-  //      "message": "Document is unrecoverable",
-  //      "method": "check",
-  //      "reason": "corrupted",
-  //      "result": "error",
-  //      "status": 409,
-  //      "statusText": "Conflict"
-  //    }, "Check corrupted document");
-  //
-  //    deepEqual(answers[3], {
-  //      "id": "inexistent",
-  //      "method": "check",
-  //      "result": "success",
-  //      "status": 204,
-  //      "statusText": "No Content"
-  //    }, "Check inexistent document");
-  //
-  //  }).then(function () {
-  //
-  //    return all([
-  //      jio.repair({"_id": "war"}),
-  //      jio.repair({"_id": "meta"}),
-  //      jio.repair({"_id": "cor"}),
-  //      jio.repair({"_id": "inexistent"})
-  //    ]);
-  //
-  //  }).always(function (answers) {
-  //
-  //    deepEqual(answers[0], {
-  //      "id": "war",
-  //      "method": "repair",
-  //      "result": "success",
-  //      "status": 204,
-  //      "statusText": "No Content"
-  //    }, "Repair a document with one missing attachment");
-  //
-  //    deepEqual(answers[1], {
-  //      "id": "meta",
-  //      "method": "repair",
-  //      "result": "success",
-  //      "status": 204,
-  //      "statusText": "No Content"
-  //    }, "Repair document with wrong metadata");
-  //
-  //    deepEqual(answers[2], {
-  //      "id": "cor",
-  //      "method": "repair",
-  //      "result": "success",
-  //      "status": 204,
-  //      "statusText": "No Content"
-  //    }, "Repair corrupted document");
-  //
-  //    deepEqual(answers[3], {
-  //      "id": "inexistent",
-  //      "method": "repair",
-  //      "result": "success",
-  //      "status": 204,
-  //      "statusText": "No Content"
-  //    }, "Repair inexistent document");
-  //
-  //  }).then(function () {
-  //
-  //    o.getCorruptedDocuments = function () {
-  //      return all([
-  //        jio.get({"_id": "war"}),
-  //        jio.get({"_id": "meta"}),
-  //        jio.get({"_id": "cor"}),
-  //        jio.get({"_id": "inexistent"})
-  //      ]);
-  //    };
-  //
-  //    return o.getCorruptedDocuments();
-  //
-  //  }).always(function (answers) {
-  //
-  //    o.testGetAnswers = function (answers) {
-  //
-  //      deepEqual(answers[0], {
-  //        "data": {
-  //          "_id": "war",
-  //          "title": "b"
-  //        },
-  //        "id": "war",
-  //        "method": "get",
-  //        "result": "success",
-  //        "status": 200,
-  //        "statusText": "Ok"
-  //      }, "Get repaired document with one missing attachment");
-  //
-  //      deepEqual(answers[1], {
-  //        "data": {
-  //          "_id": "meta",
-  //          "title": "b"
-  //        },
-  //        "id": "meta",
-  //        "method": "get",
-  //        "result": "success",
-  //        "status": 200,
-  //        "statusText": "Ok"
-  //      }, "Get repaired document with wrong metadata");
-  //
-  //      deepEqual(answers[2], {
-  //        "error": "not_found",
-  //        "id": "cor",
-  //        "message": "Cannot find document",
-  //        "method": "get",
-  //        "reason": "missing",
-  //        "result": "error",
-  //        "status": 404,
-  //        "statusText": "Not Found"
-  //      }, "Get repaired corrupted document");
-  //
-  //      deepEqual(answers[3], {
-  //        "error": "not_found",
-  //        "id": "inexistent",
-  //        "message": "Cannot find document",
-  //        "method": "get",
-  //        "reason": "missing",
-  //        "result": "error",
-  //        "status": 404,
-  //        "statusText": "Not Found"
-  //      }, "Get repaired inexistent document");
-  //
-  //    };
-  //
-  //    o.testGetAnswers(answers);
-  //
-  //  }).then(function () {
-  //
-  //    o.putCorruptedDocuments();
-  //
-  //    return jio.repair({});
-  //
-  //  }).always(function (answer) {
-  //
-  //    deepEqual(answer, {
-  //      "method": "repair",
-  //      "result": "success",
-  //      "status": 204,
-  //      "statusText": "No Content"
-  //    }, "Repair all the database");
-  //
-  //  }).then(function () {
-  //
-  //    return o.getCorruptedDocuments();
-  //
-  //  }).always(function (answers) {
-  //
-  //    o.testGetAnswers(answers);
-  //
-  //  }).then(function () {
-  //
-  //    // unreferenced attachment must be removed
-  //    deepEqual(util.json_local_storage.getItem(
-  //      "jio/localstorage/urepair/arepair/unref/aa"
-  //    ), null, "Unreferenced attachment removed");
-  //
-  //  }).always(start);
-  //
-  //});
 
 }));
