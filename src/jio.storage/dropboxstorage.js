@@ -167,26 +167,26 @@
     // First we get the document
     return this._get(param._id)
       .then(function (answer) {
-          return JSON.parse(answer.target.responseText);
+        return JSON.parse(answer.target.responseText);
       })
       .fail(function (event) {
-	// If status is 404 it means the document is missing
-	//   and we can not get its attachment
+        // If status is 404 it means the document is missing
+        //   and we can not get its attachment
         if (event.target.status === 404) {
-            command.error({
-              'status': 404,
-              'message': 'Unable to get attachment',
-              'reason': 'Missing document'
-            });
-          } else {
-            command.error(
-              event.target.status,
-              event.target.statusText,
-              "Problem while retrieving document"
-            );
-          }
+          command.error({
+            'status': 404,
+            'message': 'Unable to get attachment',
+            'reason': 'Missing document'
+          });
+        } else {
+          command.error(
+            event.target.status,
+            event.target.statusText,
+            "Problem while retrieving document"
+          );
         }
-      )
+      }
+           )
     // We get the attachment
     // XXX Should be fetch at the same time as the document for optimization
       .then(function () {
@@ -204,15 +204,15 @@
           );
         })
       .fail(function (error) {
-          command.error(
-            {
-              'status': error.target.status,
-              'reason': error.target.statusText,
-              'message': "Cannot find attachment"
-            }
-          );
-        }
-      );
+        command.error(
+          {
+            'status': error.target.status,
+            'reason': error.target.statusText,
+            'message': "Cannot find attachment"
+          }
+        );
+      }
+           );
   };
 
   /**
@@ -231,24 +231,24 @@
     // We first get the document
     return this._get(param._id)
       .then(function (answer) {
-          return JSON.parse(answer.target.responseText);
-        })
+        return JSON.parse(answer.target.responseText);
+      })
       .fail(function (event) {
-	// If the document do not exist it fails
-          if (event.target.status === 404) {
-            command.error({
-              'status': 404,
-              'message': 'Impossible to add attachment',
-              'reason': 'Missing document'
-            });
-          } else {
-            command.error(
-              event.target.status,
-              event.target.statusText,
-              "Problem while retrieving document"
-            );
-          }
-        })
+        // If the document do not exist it fails
+        if (event.target.status === 404) {
+          command.error({
+            'status': 404,
+            'message': 'Impossible to add attachment',
+            'reason': 'Missing document'
+          });
+        } else {
+          command.error(
+            event.target.status,
+            event.target.statusText,
+            "Problem while retrieving document"
+          );
+        }
+      })
     // Once we have the document we need to update it
     //   and push the attachment
       .then(function (document) {
@@ -257,7 +257,7 @@
         if (document._attachments === undefined) {
           document._attachments = {};
         }
-	// We update the document to include the attachment
+        // We update the document to include the attachment
         updateDocument = function () {
           document._attachments[param._attachment] = {
             "content_type": param._blob.type,
@@ -271,7 +271,7 @@
             })
           );
         };
-	// We push the attachment
+        // We push the attachment
         pushAttachment = function () {
           return that._put(
             param._attachment,
@@ -279,7 +279,7 @@
             param._id + '-attachments/'
           );
         };
-	// Push of updated document and attachment are launched
+        // Push of updated document and attachment are launched
         return RSVP.all([updateDocument(), pushAttachment()]);
       })
       .then(function (params) {
@@ -327,15 +327,15 @@
       // We loop aver all documents
       for (i = 0; i < count; i += 1) {
         item = data.contents[i];
-	// If the element is a folder it is not included (storage specific)
+        // If the element is a folder it is not included (storage specific)
         if (!item.is_dir) {
           // Note: the '/' at the begining of the path is stripped
           item_id = item.path[0] === '/' ? item.path.substr(1) : item.path;
-	  // Prepare promise_list to fetch document in case of include_docs
+          // Prepare promise_list to fetch document in case of include_docs
           if (options.include_docs === true) {
             promise_list.push(my_storage._get(item_id));
           }
-	  // Document is added to the result list
+          // Document is added to the result list
           result.push({
             id: item_id,
             key: item_id,
@@ -395,7 +395,7 @@
     // Remove the document
     return this._remove(param._id)
       .fail(function (error) {
-	// If 404 the document do not exist
+        // If 404 the document do not exist
         if (error.target.status === 404) {
           command.error(
             error.target.status,
