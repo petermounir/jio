@@ -310,31 +310,35 @@
     var list_url = '',
     result = [],
     my_storage = this;
+
     // Too specific, should be less storage dependent
-    list_url = 'https://api.dropbox.com/1/metadata/sandbox/' + "?list=true"
-      + '&access_token=' + this._access_token;
+    list_url = 'https://api.dropbox.com/1/metadata/sandbox/' + "?list=true" +
+      '&access_token=' + this._access_token;
+
     // We get a list of all documents
     jIO.util.ajax({
       "type": "POST",
       "url": list_url
     }).then(function (response) {
-      var data = JSON.parse(response.target.responseText),
+      var i, item, item_id,
+      data = JSON.parse(response.target.responseText),
       count = data.contents.length,
-      promise_list = [],
-      item,
-      i,
-      item_id;
+      promise_list = [];
+
       // We loop aver all documents
       for (i = 0; i < count; i += 1) {
         item = data.contents[i];
+
         // If the element is a folder it is not included (storage specific)
         if (!item.is_dir) {
-          // Note: the '/' at the begining of the path is stripped
+          // NOTE: the '/' at the begining of the path is stripped
           item_id = item.path[0] === '/' ? item.path.substr(1) : item.path;
+
           // Prepare promise_list to fetch document in case of include_docs
           if (options.include_docs === true) {
             promise_list.push(my_storage._get(item_id));
           }
+
           // Document is added to the result list
           result.push({
             id: item_id,
@@ -343,12 +347,15 @@
           });
         }
       }
-      // Here if promise_list is empty, success is triggered directly
+
+      // NOTE: if promise_list is empty, success is triggered directly
       // else it fetch all documents and add them to the result
       return RSVP.all(promise_list);
     }).then(function (response_list) {
-      var i;
-      for (i = 0; i < response_list.length; i += 1) {
+      var i, response_length;
+
+      response_length = response_list.length;
+      for (i = 0; i < response_length; i += 1) {
         result[i].doc = JSON.parse(response_list[i].target.response);
       }
       command.success({
