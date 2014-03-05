@@ -248,7 +248,7 @@
   });
 
   test("PutAttachment & Get & GetAttachment", function () {
-    expect(9);
+    expect(10);
     var jio = jIO.createJIO({
       "type": "dropbox",
       "access_token": "v43SQLCEoi8AAAAAAAAAAVixCoMfDelgGj3NRPfEnqscAuNGp2LhoS8-GiAaDD4C"
@@ -403,7 +403,39 @@
 
       })
 
-    ]).always(start);
+    ]).then( function () {
+      return jio.put({
+        "_id": "putattmt1",
+        "foo": "bar",
+        "title": "myPutAttmt1"
+      });
+    }).then (function () {
+      return jio.get({
+        "_id": "putattmt1"
+      });
+    }).always(function (answer) {
+
+        deepEqual(answer, {
+          "data": {
+            "_attachments": {
+              "putattmt2": {
+                "content_type": "",
+                "digest": "sha256-4ea5c508a6566e76240543f8feb06fd457777be39549c4016436afda65d2330e",
+                "length": 0
+              }
+            },
+            "_id": "putattmt1",
+            "foo": "bar",
+            "title": "myPutAttmt1"
+          },
+          "id": "putattmt1",
+          "method": "get",
+          "result": "success",
+          "status": 200,
+          "statusText": "Ok"
+        }, "Get, Check put kept document attachment");
+    })
+      .always(start);
 
   });
 
