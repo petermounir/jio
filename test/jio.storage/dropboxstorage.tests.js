@@ -512,7 +512,8 @@
     var o = {},
     jio = jIO.createJIO({
       "type": "dropbox",
-      "access_token": "v43SQLCEoi8AAAAAAAAAAVixCoMfDelgGj3NRPfEnqscAuNGp2LhoS8-GiAaDD4C"
+      "access_token": "v43SQLCEoi8AAAAAAAAAAVixCoMfDelgGj3NRPfEnqscAuNGp2LhoS8-GiAaDD4C",
+      "root_folder": "AllDocs-test"
     }, {
       "workspace": {}
     });

@@ -32,7 +32,14 @@
       throw new TypeError("Access Token' must be a string " +
                           "which contains more than one character.");
     }
+    if (typeof spec.root_folder !== 'string' && spec.root_folder) {
+      throw new TypeError("'Root Folder' must be a string ");
+    }
+    if ( !spec.root_folder ) {
+      spec.root_folder = "default"
+    }
     this._access_token = spec.access_token;
+    this._root_folder = spec.root_folder;
   }
 
   // Storage specific put method
@@ -48,7 +55,9 @@
     );
     return jIO.util.ajax({
       "type": "POST",
-      "url": UPLOAD_URL + 'files/sandbox/' + path + '?access_token=' + this._access_token,
+      "url": UPLOAD_URL + 'files/sandbox/' +
+        this._root_folder + '/' +
+        path + '?access_token=' + this._access_token,
       "data": data
     });
 
@@ -144,7 +153,9 @@
 
   // Storage specific get method
   DropboxStorage.prototype._get = function (key) {
-    var download_url = 'https://api-content.dropbox.com/1/files/sandbox/' + key + '?access_token=' + this._access_token;
+    var download_url = 'https://api-content.dropbox.com/1/files/sandbox/' +
+      this._root_folder + '/' +
+      key + '?access_token=' + this._access_token;
     return jIO.util.ajax({
       "type": "GET",
       "url": download_url
@@ -334,10 +345,13 @@
   DropboxStorage.prototype.allDocs = function (command, param, options) {
     var list_url = '',
     result = [],
-    my_storage = this;
+    my_storage = this,
+    stripping_length = 2 + my_storage._root_folder.length ;
 
     // Too specific, should be less storage dependent
-    list_url = 'https://api.dropbox.com/1/metadata/sandbox/' + "?list=true" +
+    list_url = 'https://api.dropbox.com/1/metadata/sandbox/' +
+      this._root_folder + '/' +
+      "?list=true" +
       '&access_token=' + this._access_token;
 
     // We get a list of all documents
@@ -357,7 +371,7 @@
         // If the element is a folder it is not included (storage specific)
         if (!item.is_dir) {
           // NOTE: the '/' at the begining of the path is stripped
-          item_id = item.path[0] === '/' ? item.path.substr(1) : item.path;
+          item_id = item.path[0] === '/' ? item.path.substr(stripping_length) : item.path;
 
           // Prepare promise_list to fetch document in case of include_docs
           if (options.include_docs === true) {
@@ -407,7 +421,9 @@
     if (path === undefined) {
       path = '';
     }
-    DELETE_PARAMETERS = "?root=sandbox&path=" + path + '/' + key + "&access_token=" + this._access_token;
+    DELETE_PARAMETERS = "?root=sandbox&path=" +
+      this._root_folder + '/' +
+      path + '/' + key + "&access_token=" + this._access_token;
     delete_url = DELETE_HOST + DELETE_PREFIX + DELETE_PARAMETERS;
     return jIO.util.ajax({
       "type": "POST",
