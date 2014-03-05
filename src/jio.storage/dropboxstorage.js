@@ -98,23 +98,48 @@
    */
   DropboxStorage.prototype.put = function (command, metadata) {
     // We put the document
-    return this._put(
-      metadata._id,
-      new Blob([JSON.stringify(metadata)], {
-        type: "application/json"
+    var that = this,
+    old_document = {};
+    return this._get(metadata._id)
+      .then(function (doc) {
+        if (doc.target.responseText !== undefined) {
+            old_document = JSON.parse(doc.target.responseText)
+          }
       })
-    ).then(function (doc) {
-      command.success({
-        "statusText": "No Content",
-        "status": 201
+      .fail(function (event) {
+        if (event.target.status === 404) {
+          return;
+        }
+        command.error(
+          event.target.status,
+          event.target.statusText,
+          "Unable to put doc"
+        );
+      })
+      .then(function () {
+        if (old_document._attachments !== undefined) {
+          metadata._attachments = old_document._attachments;
+        }
+        return that._put(
+          metadata._id,
+          new Blob([JSON.stringify(metadata)], {
+            type: "application/json"
+          })
+        )
+      })
+      .then(function (doc) {
+        command.success({
+          "statusText": "No Content",
+          "status": 201
+        });
+      })
+      .fail(function (event) {
+        command.error(
+          event.target.status,
+          event.target.statusText,
+          "Unable to put doc"
+        );
       });
-    }).fail(function (event) {
-      command.error(
-        event.target.status,
-        event.target.statusText,
-        "Unable to put doc"
-      );
-    });
   };
 
   // Storage specific get method
