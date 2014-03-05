@@ -444,7 +444,7 @@
   });
 
   test("Remove & RemoveAttachment", function () {
-    expect(4);
+    expect(5);
     var jio = jIO.createJIO({
       "type": "dropbox",
       "access_token": "v43SQLCEoi8AAAAAAAAAAVixCoMfDelgGj3NRPfE" +
@@ -484,6 +484,21 @@
       }, "Remove existent attachment");
 
     }).then(function () {
+      return jio.get({'_id' : "a"});
+    }).always(function (answer) {
+      deepEqual(answer, {
+          "data": {
+            "_id": "a",
+          },
+          "id": "a",
+          "method": "get",
+          "result": "success",
+          "status": 200,
+          "statusText": "Ok"
+      }, "Attachment removed from metadata");
+
+    })
+      .then(function () {
 
       // Promise.all always return success
       return all([jio.removeAttachment({

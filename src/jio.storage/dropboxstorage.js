@@ -21,6 +21,22 @@
 ], function (jIO, RSVP) {
   "use strict";
 
+  /**
+   * Checks if an object has no enumerable keys
+   *
+   * @param  {Object} obj The object
+   * @return {Boolean} true if empty, else false
+   */
+  function objectIsEmpty(obj) {
+    var k;
+    for (k in obj) {
+      if (obj.hasOwnProperty(k)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   var UPLOAD_URL = "https://api-content.dropbox.com/1/",
     UPLOAD_OR_GET_URL = "https://api-content.dropbox.com/1/files/sandbox/",
     REMOVE_URL = "https://api.dropbox.com/1/fileops/delete/",
@@ -519,7 +535,10 @@
         return that._remove(param._attachment, param._id + '-attachments')
       })
       .then(function (event) {
-        document._attachments[param._attachment] = undefined;
+        delete document._attachments[param._attachment]
+        if (objectIsEmpty(document._attachments)) {
+          delete document._attachments;
+        }
         return that._put(
           param._id,
            new Blob([JSON.stringify(document)], {
