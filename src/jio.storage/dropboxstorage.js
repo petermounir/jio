@@ -235,7 +235,6 @@
         // XXX Here the below .then is always called
       })
     // We get the attachment
-    // XXX Should be fetch at the same time as the document for optimization
       .then(function () {
         return that._get(param._id + "-attachments/" + param._attachment);
       })
@@ -284,21 +283,21 @@
         return JSON.parse(answer.target.responseText);
       })
       .fail(function (event) {
-        // XXX instanceof ProgressEvent
-
-        // If the document do not exist it fails
-        if (event.target.status === 404) {
-          command.error({
-            'status': 404,
-            'message': 'Impossible to add attachment',
-            'reason': 'Missing document'
-          });
-        } else {
-          command.error(
-            event.target.status,
-            event.target.statusText,
-            "Problem while retrieving document"
-          );
+        if (event instanceof ProgressEvent) {
+          // If the document do not exist it fails
+          if (event.target.status === 404) {
+            command.error({
+              'status': 404,
+              'message': 'Impossible to add attachment',
+              'reason': 'Missing document'
+            });
+          } else {
+            command.error(
+              event.target.status,
+              event.target.statusText,
+              "Problem while retrieving document"
+            );
+          }
         }
 
         // XXX this .fail method is working well, so we go to next then with
@@ -460,25 +459,6 @@
   DropboxStorage.prototype.remove = function (command, param) {
     var that = this;
 
-    // XXX metadata files should be removed before attachments
-    // `removeMetadataFile().then(removeAllAttachments);`
-    // if an attachment is already removed, you can get a 404.
-
-    /**
-     * This function removes the attachment folder if it exists
-     */
-    function removeAttachments() {
-      that._remove(param._id + '-attachments').fail(function (event) {
-        if (event instanceof ProgressEvent) {
-          if (event.target.status === 404) {
-            // attachment folder does not exist
-            return event; // switch to fulfillment channel
-          }
-        }
-        throw event; // propagate error
-      });
-    }
-
     // Remove the document
     return this._remove(param._id)
       .fail(function (error) {
@@ -498,10 +478,10 @@
         );
       })
     // Remove its attachment (all in the same folder)
-      .then(removeAttachments)
+      .then(function () {
+        return that._remove(param._id + '-attachments')
+      })
       .then(function (event) {
-        // XXX I'd rather to have metadata file remove event instead of
-        // attachment folder one.
         command.success(
           event.target.status,
           event.target.statusText
@@ -511,11 +491,12 @@
     // XXX Should check that status is 404
     // XXX Maybe remove attachment then document or all at once !!?
       .fail(function (event) {
-        // XXX instanceof ProgressEvent
-        command.success(
-          200,
-          "OK"
-        );
+        if (event instanceof ProgressEvent) {
+          command.success(
+            200,
+            "OK"
+          );
+        }
       });
   };
 
@@ -527,10 +508,25 @@
    * @param  {Object} param The given parameters
    */
   DropboxStorage.prototype.removeAttachment = function (command, param) {
+    var that = this, document = {};
     // Remove an attachment
-    // XXX Should it remove attachment occurence in the document ?
     //       Then it should be tested
-    return this._remove(param._attachment, param._id + '-attachments')
+    return this._get(param._id)
+      .then(function (answer) {
+        document = JSON.parse(answer.target.responseText);
+      })
+      .then(function () {
+        return that._remove(param._attachment, param._id + '-attachments')
+      })
+      .then(function (event) {
+        document._attachments[param._attachment] = undefined;
+        return that._put(
+          param._id,
+           new Blob([JSON.stringify(document)], {
+             type: "application/json"
+           })
+        );
+      })
       .then(function (event) {
         command.success(
           event.target.status,
