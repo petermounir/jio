@@ -7,19 +7,24 @@
  * JIO Dropbox Storage. Type = "dropbox".
  * Dropbox "database" storage.
  */
-/*global FormData, btoa, Blob, CryptoJS */
-/*jslint nomen: true, unparam: true, bitwise: true */
+/*global FormData, btoa, Blob, define, jIO, RSVP, ProgressEvent */
+/*jslint indent: 2, maxlen: 80, nomen: true, unparam: true, bitwise: true */
 (function (dependencies, module) {
   "use strict";
   if (typeof define === 'function' && define.amd) {
     return define(dependencies, module);
   }
-  module(jIO);
+  module(jIO, RSVP);
 }([
-  'jio'
-], function (jIO) {
+  'jio',
+  'rsvp'
+], function (jIO, RSVP) {
   "use strict";
-  var UPLOAD_URL = "https://api-content.dropbox.com/1/";
+
+  var UPLOAD_URL = "https://api-content.dropbox.com/1/",
+    UPLOAD_OR_GET_URL = "https://api-content.dropbox.com/1/files/sandbox/",
+    REMOVE_URL = "https://api.dropbox.com/1/fileops/delete/",
+    LIST_URL = 'https://api.dropbox.com/1/metadata/sandbox/';
 
   /**
    * The JIO DropboxStorage extension
@@ -72,8 +77,7 @@
    */
   DropboxStorage.prototype.post = function (command, metadata) {
     // A copy of the document is made
-    var doc = jIO.util.deepClone(metadata),
-    doc_id = metadata._id;
+    var doc = jIO.util.deepClone(metadata), doc_id = metadata._id;
     // An id is generated if none is provided
     if (!doc_id) {
       doc_id = jIO.util.generateUuid();
@@ -137,18 +141,16 @@
         )
       })
       .then(function (doc) {
-        command.success({
-          "statusText": "No Content",
-          "status": 201
-        });
-      })
-      .fail(function (event) {
+        command.success();
+      // XXX should use command.success("created") when the document is created
+      }).fail(function (event) {
         command.error(
           event.target.status,
           event.target.statusText,
           "Unable to put doc"
         );
       });
+
   };
 
   // Storage specific get method
@@ -169,24 +171,28 @@
    **/
   DropboxStorage.prototype.get = function (command, param) {
     return this._get(param._id)
-      .then(function (doc) {
-        if (doc.target.responseText !== undefined) {
+      .then(function (event) {
+        if (event.target.responseText !== undefined) {
           command.success({
-            "data": JSON.parse(doc.target.responseText)
+            "data": JSON.parse(event.target.responseText)
           });
         } else {
           command.error(
-            "not_found",
-            "missing",
+            event.target.status,
+            event.target.statusText,
             "Cannot find document"
           );
         }
       }).fail(function (event) {
-        command.error(
-          event.target.status,
-          event.target.statusText,
-          "Cannot find document"
-        );
+        if (event instanceof ProgressEvent) {
+          command.error(
+            event.target.status,
+            event.target.statusText,
+            "Cannot find document"
+          );
+        } else {
+          command.error(event);
+        }
       });
   };
 
@@ -206,49 +212,58 @@
         return JSON.parse(answer.target.responseText);
       })
       .fail(function (event) {
-        // If status is 404 it means the document is missing
-        //   and we can not get its attachment
-        if (event.target.status === 404) {
-          command.error({
-            'status': 404,
-            'message': 'Unable to get attachment',
-            'reason': 'Missing document'
-          });
+        if (event instanceof ProgressEvent) {
+          // If status is 404 it means the document is missing
+          //   and we can not get its attachment
+          if (event.target.status === 404) {
+            command.error({
+              'status': 404,
+              'message': 'Unable to get attachment',
+              'reason': 'Missing document'
+            });
+          } else {
+            command.error(
+              event.target.status,
+              event.target.statusText,
+              "Problem while retrieving document"
+            );
+          }
         } else {
-          command.error(
-            event.target.status,
-            event.target.statusText,
-            "Problem while retrieving document"
-          );
+          command.error(event);
         }
-      }
-           )
+        // XXX Do only one .fail method at the end of the .then chain
+        // XXX Here the below .then is always called
+      })
     // We get the attachment
     // XXX Should be fetch at the same time as the document for optimization
       .then(function () {
         return that._get(param._id + "-attachments/" + param._attachment);
       })
-      .then(
-        function (doc) {
-          var attachment_blob = new Blob([doc.target.response]);
-          command.success(
-            doc.target.status,
-            {
-              "data": attachment_blob,
-              "digest": jIO.util.makeBinaryStringDigest(attachment_blob)
-            }
-          );
-        })
-      .fail(function (error) {
-        command.error(
+      .then(function (doc) {
+        var attachment_blob = new Blob([doc.target.response]);
+        command.success(
+          doc.target.status,
           {
-            'status': error.target.status,
-            'reason': error.target.statusText,
-            'message': "Cannot find attachment"
+            "data": attachment_blob,
+            // XXX make the hash during the putAttachment and store it into the
+            // metadata file.
+            "digest": jIO.util.makeBinaryStringDigest(attachment_blob)
           }
         );
-      }
-           );
+      })
+      .fail(function (error) {
+        if (error instanceof ProgressEvent) {
+          command.error(
+            {
+              'status': error.target.status,
+              'reason': error.target.statusText,
+              'message': "Cannot find attachment"
+            }
+          );
+        } else {
+          command.error(error);
+        }
+      });
   };
 
   /**
@@ -260,8 +275,7 @@
    * @param  {Object} options The command options
    */
   DropboxStorage.prototype.putAttachment = function (command, param) {
-    var that = this,
-    digest = '';
+    var that = this, digest;
     // We calculate the digest string of the attachment
     digest = jIO.util.makeBinaryStringDigest(param._blob);
     // We first get the document
@@ -270,6 +284,8 @@
         return JSON.parse(answer.target.responseText);
       })
       .fail(function (event) {
+        // XXX instanceof ProgressEvent
+
         // If the document do not exist it fails
         if (event.target.status === 404) {
           command.error({
@@ -284,12 +300,14 @@
             "Problem while retrieving document"
           );
         }
+
+        // XXX this .fail method is working well, so we go to next then with
+        // `undefined` as first argument.
       })
     // Once we have the document we need to update it
     //   and push the attachment
       .then(function (document) {
-        var updateDocument,
-        pushAttachment;
+        var updateDocument, pushAttachment;
         if (document._attachments === undefined) {
           document._attachments = {};
         }
@@ -317,15 +335,20 @@
         };
         // Push of updated document and attachment are launched
         return RSVP.all([updateDocument(), pushAttachment()]);
+        // XXX If the attachment is not uploaded due to an error, the metadata
+        // should not be updated.  I think doing
+        // `pushAttachment().then(updateDocument)` is better.
       })
       .then(function (params) {
         command.success({
           'digest': digest,
           'status': 201,
           'statusText': 'Created'
+          // XXX are you sure this the attachment is created?
         });
       })
       .fail(function (event) {
+        // XXX instanceof ProgressEvent
         command.error(
           event.target.status,
           event.target.statusText,
@@ -343,9 +366,7 @@
    * @param  {Object} options The command options
    */
   DropboxStorage.prototype.allDocs = function (command, param, options) {
-    var list_url = '',
-    result = [],
-    my_storage = this,
+    var list_url = '', result = [], my_storage = this,
     stripping_length = 2 + my_storage._root_folder.length ;
 
     // Too specific, should be less storage dependent
@@ -359,10 +380,9 @@
       "type": "POST",
       "url": list_url
     }).then(function (response) {
-      var i, item, item_id,
-      data = JSON.parse(response.target.responseText),
-      count = data.contents.length,
-      promise_list = [];
+      var i, item, item_id, data, count, promise_list = [];
+      data = JSON.parse(response.target.responseText);
+      count = data.contents.length;
 
       // We loop aver all documents
       for (i = 0; i < count; i += 1) {
@@ -381,7 +401,6 @@
           // Document is added to the result list
           result.push({
             id: item_id,
-            key: item_id,
             value: {}
           });
         }
@@ -404,6 +423,7 @@
         }
       });
     }).fail(function (error) {
+      // XXX instanceof ProgressEvent
       command.error(
         "error",
         "did not work as expected",
@@ -414,10 +434,9 @@
 
   // Storage specific remove method
   DropboxStorage.prototype._remove = function (key, path) {
-    var DELETE_HOST = "https://api.dropbox.com/1",
-    DELETE_PREFIX = "/fileops/delete/",
-    DELETE_PARAMETERS,
-    delete_url;
+    var DELETE_HOST, DELETE_PREFIX, DELETE_PARAMETERS, delete_url;
+    DELETE_HOST = "https://api.dropbox.com/1";
+    DELETE_PREFIX = "/fileops/delete/";
     if (path === undefined) {
       path = '';
     }
@@ -440,9 +459,30 @@
    */
   DropboxStorage.prototype.remove = function (command, param) {
     var that = this;
+
+    // XXX metadata files should be removed before attachments
+    // `removeMetadataFile().then(removeAllAttachments);`
+    // if an attachment is already removed, you can get a 404.
+
+    /**
+     * This function removes the attachment folder if it exists
+     */
+    function removeAttachments() {
+      that._remove(param._id + '-attachments').fail(function (event) {
+        if (event instanceof ProgressEvent) {
+          if (event.target.status === 404) {
+            // attachment folder does not exist
+            return event; // switch to fulfillment channel
+          }
+        }
+        throw event; // propagate error
+      });
+    }
+
     // Remove the document
     return this._remove(param._id)
       .fail(function (error) {
+        // XXX instanceof ProgressEvent
         // If 404 the document do not exist
         if (error.target.status === 404) {
           command.error(
@@ -458,10 +498,10 @@
         );
       })
     // Remove its attachment (all in the same folder)
+      .then(removeAttachments)
       .then(function (event) {
-        return that._remove(param._id + '-attachments');
-      })
-      .then(function (event) {
+        // XXX I'd rather to have metadata file remove event instead of
+        // attachment folder one.
         command.success(
           event.target.status,
           event.target.statusText
@@ -471,6 +511,7 @@
     // XXX Should check that status is 404
     // XXX Maybe remove attachment then document or all at once !!?
       .fail(function (event) {
+        // XXX instanceof ProgressEvent
         command.success(
           200,
           "OK"

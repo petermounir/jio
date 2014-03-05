@@ -31,9 +31,7 @@
    * @return {Promise} A new promise
    */
   function all(promises) {
-    var results = [],
-    i,
-    count = 0;
+    var results = [], i, count = 0;
 
     function cancel() {
       var j;
@@ -75,7 +73,8 @@
     expect(5);
     var jio = jIO.createJIO({
       "type": "dropbox",
-      "access_token": "v43SQLCEoi8AAAAAAAAAAVixCoMfDelgGj3NRPfEnqscAuNGp2LhoS8-GiAaDD4C"
+      "access_token": "v43SQLCEoi8AAAAAAAAAAVixCoMfDelgGj3NRPfE" +
+        "nqscAuNGp2LhoS8-GiAaDD4C"
     }, {
       "workspace": {}
     });
@@ -164,7 +163,8 @@
     expect(4);
     var jio = jIO.createJIO({
       "type": "dropbox",
-      "access_token": "v43SQLCEoi8AAAAAAAAAAVixCoMfDelgGj3NRPfEnqscAuNGp2LhoS8-GiAaDD4C"
+      "access_token": "v43SQLCEoi8AAAAAAAAAAVixCoMfDelgGj3NRPfE" +
+        "nqscAuNGp2LhoS8-GiAaDD4C"
     }, {
       "workspace": {}
     });
@@ -181,8 +181,8 @@
         "id": "put1",
         "method": "put",
         "result": "success",
-        "status": 201,
-        "statusText": "Created"
+        "status": 204,
+        "statusText": "No Content"
       }, "Creates a document");
 
     }).then(function () {
@@ -219,8 +219,8 @@
         "id": "put1",
         "method": "put",
         "result": "success",
-        "status": 201,
-        "statusText": "Created"
+        "status": 204,
+        "statusText": "No Content"
       }, "Update the document");
 
     }).then(function () {
@@ -251,7 +251,8 @@
     expect(10);
     var jio = jIO.createJIO({
       "type": "dropbox",
-      "access_token": "v43SQLCEoi8AAAAAAAAAAVixCoMfDelgGj3NRPfEnqscAuNGp2LhoS8-GiAaDD4C"
+      "access_token": "v43SQLCEoi8AAAAAAAAAAVixCoMfDelgGj3NRPfE" +
+        "nqscAuNGp2LhoS8-GiAaDD4C"
     }, {
       "workspace": {}
     });
@@ -343,7 +344,8 @@
 
         deepEqual(answer, {
           "attachment": "putattmt2",
-          "digest": "sha256-4ea5c508a6566e76240543f8feb06fd457777be39549c4016436afda65d2330e",
+          "digest": "sha256-4ea5c508a6566e76240543f8feb06fd45" +
+            "7777be39549c4016436afda65d2330e",
           "id": "putattmt1",
           "method": "putAttachment",
           "result": "success",
@@ -373,7 +375,8 @@
             "_attachments": {
               "putattmt2": {
                 "content_type": "",
-                "digest": "sha256-4ea5c508a6566e76240543f8feb06fd457777be39549c4016436afda65d2330e",
+                "digest": "sha256-4ea5c508a6566e76240543f8feb06fd45" +
+                  "7777be39549c4016436afda65d2330e",
                 "length": 0
               }
             },
@@ -394,7 +397,8 @@
         deepEqual(answers[1], {
           "attachment": "putattmt2",
           "id": "putattmt1",
-          "digest": "sha256-4ea5c508a6566e76240543f8feb06fd457777be39549c4016436afda65d2330e",
+          "digest": "sha256-4ea5c508a6566e76240543f8feb06fd45" +
+            "7777be39549c4016436afda65d2330e",
           "method": "getAttachment",
           "result": "success",
           "status": 200,
@@ -443,7 +447,8 @@
     expect(4);
     var jio = jIO.createJIO({
       "type": "dropbox",
-      "access_token": "v43SQLCEoi8AAAAAAAAAAVixCoMfDelgGj3NRPfEnqscAuNGp2LhoS8-GiAaDD4C"
+      "access_token": "v43SQLCEoi8AAAAAAAAAAVixCoMfDelgGj3NRPfE" +
+        "nqscAuNGp2LhoS8-GiAaDD4C"
     }, {
       "workspace": {}
     });
@@ -541,10 +546,11 @@
 
   test("AllDocs", function () {
     expect(2);
-    var o = {},
+    var shared = {}, jio;
     jio = jIO.createJIO({
       "type": "dropbox",
-      "access_token": "v43SQLCEoi8AAAAAAAAAAVixCoMfDelgGj3NRPfEnqscAuNGp2LhoS8-GiAaDD4C",
+      "access_token": "v43SQLCEoi8AAAAAAAAAAVixCoMfDelgGj3NRPfE" +
+        "nqscAuNGp2LhoS8-GiAaDD4C",
       "root_folder": "AllDocs-test"
     }, {
       "workspace": {}
@@ -552,15 +558,14 @@
 
     stop();
 
-    o.date_a = new Date(0);
-    o.date_b = new Date();
+    shared.date_a = new Date(0);
+    shared.date_b = new Date();
 
     // Clean storage and put some document before listing them
     all([
       jio.allDocs()
         .then(function (document_list) {
-          var promise_list = [],
-          i;
+          var promise_list = [], i;
           for (i = 0; i < document_list.data.total_rows; i += 1) {
             promise_list.push(
               jio.remove({
@@ -568,7 +573,7 @@
               })
             );
           }
-          return RSPV.all(promise_list);
+          return RSVP.all(promise_list);
         })
     ])
       .then(function () {
@@ -576,7 +581,7 @@
           jio.put({
             "_id": "a",
             "title": "one",
-            "date": o.date_a
+            "date": shared.date_a
           }).then(function () {
             return jio.putAttachment({
               "_id": "a",
@@ -587,17 +592,17 @@
           jio.put({
             "_id": "b",
             "title": "two",
-            "date": o.date_a
+            "date": shared.date_a
           }),
           jio.put({
             "_id": "c",
             "title": "one",
-            "date": o.date_b
+            "date": shared.date_b
           }),
           jio.put({
             "_id": "d",
             "title": "two",
-            "date": o.date_b
+            "date": shared.date_b
           })
         ]);
       }).then(function () {
@@ -618,19 +623,15 @@
           "data": {
             "rows": [{
               "id": "a",
-              "key": "a",
               "value": {}
             }, {
               "id": "b",
-              "key": "b",
               "value": {}
             }, {
               "id": "c",
-              "key": "c",
               "value": {}
             }, {
               "id": "d",
-              "key": "d",
               "value": {}
             }],
             "total_rows": 4
@@ -657,43 +658,40 @@
                 "_attachments": {
                   "aa": {
                     "content_type": "",
-                    "digest": "sha256-4ea5c508a6566e76240543f8feb06fd457777be39549c4016436afda65d2330e",
+                    "digest": "sha256-4ea5c508a6566e76240543f8feb06fd45" +
+                      "7777be39549c4016436afda65d2330e",
                     "length": 3
                   }
                 },
                 "_id": "a",
-                "date": o.date_a.toJSON(),
+                "date": shared.date_a.toJSON(),
                 "title": "one"
               },
               "id": "a",
-              "key": "a",
               "value": {}
             }, {
               "doc": {
                 "_id": "b",
-                "date": o.date_a.toJSON(),
+                "date": shared.date_a.toJSON(),
                 "title": "two"
               },
               "id": "b",
-              "key": "b",
               "value": {}
             }, {
               "doc": {
                 "_id": "c",
-                "date": o.date_b.toJSON(),
+                "date": shared.date_b.toJSON(),
                 "title": "one"
               },
               "id": "c",
-              "key": "c",
               "value": {}
             }, {
               "doc": {
                 "_id": "d",
-                "date": o.date_b.toJSON(),
+                "date": shared.date_b.toJSON(),
                 "title": "two"
               },
               "id": "d",
-              "key": "d",
               "value": {}
             }],
             "total_rows": 4
