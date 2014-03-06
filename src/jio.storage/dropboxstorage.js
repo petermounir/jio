@@ -130,43 +130,59 @@
     var that = this,
     old_document = {};
 
-    return this._get(metadata._id)
-      .then(function (doc) {
-        if (doc.target.responseText !== undefined) {
-            old_document = JSON.parse(doc.target.responseText)
+    // 1. We first get the document
+    function getDocument () {
+      return that._get(metadata._id)
+        .then(function (answer) {
+          old_document = JSON.parse(answer.target.responseText);
+        })
+        .fail(function (event) {
+          if (event instanceof ProgressEvent) {
+            // If the document do not exist no problem
+            if (event.target.status === 404) {
+              return 0;
+            }
           }
-      })
-      .fail(function (event) {
-        if (event.target.status === 404) {
-          return;
-        }
+          throw event;
+        });
+    }
+
+    // 2. Update Document
+    function updateDocument () {
+      if (old_document.hasOwnProperty('_attachments')) {
+        metadata._attachments = old_document._attachments;
+      }
+      return that._put(
+        metadata._id,
+        new Blob([JSON.stringify(metadata)], {
+          type: "application/json"
+        })
+      )
+    }
+
+    // onError
+    function onError (event) {
+      if (event instanceof ProgressEvent) {
         command.error(
           event.target.status,
           event.target.statusText,
           "Unable to put doc"
         );
-      })
-      .then(function () {
-        if (old_document._attachments !== undefined) {
-          metadata._attachments = old_document._attachments;
+      } else {
+        if (event !== 1) {
+          console.log(event);
+          throw event;
         }
-        return that._put(
-          metadata._id,
-          new Blob([JSON.stringify(metadata)], {
-            type: "application/json"
-          })
-        )
-      })
+      }
+    }
+
+    return getDocument()
+      .then(updateDocument)
       .then(function (doc) {
         command.success();
       // XXX should use command.success("created") when the document is created
-      }).fail(function (event) {
-        command.error(
-          event.target.status,
-          event.target.statusText,
-          "Unable to put doc"
-        );
-      });
+      })
+      .fail(onError);
 
   };
 
