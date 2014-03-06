@@ -129,6 +129,7 @@
     // We put the document
     var that = this,
     old_document = {};
+
     return this._get(metadata._id)
       .then(function (doc) {
         if (doc.target.responseText !== undefined) {
@@ -221,64 +222,76 @@
    * @param  {Object} options The command options
    */
   DropboxStorage.prototype.getAttachment = function (command, param) {
-    var that = this;
-    // First we get the document
-    return this._get(param._id)
-      .then(function (answer) {
-        return JSON.parse(answer.target.responseText);
-      })
-      .fail(function (event) {
-        if (event instanceof ProgressEvent) {
-          // If status is 404 it means the document is missing
-          //   and we can not get its attachment
-          if (event.target.status === 404) {
-            command.error({
-              'status': 404,
-              'message': 'Unable to get attachment',
-              'reason': 'Missing document'
-            });
+    var that = this, document = {};
+
+    // 1. We first get the document
+    function getDocument () {
+      return that._get(param._id)
+        .then(function (answer) {
+          document = JSON.parse(answer.target.responseText);
+          // XXX Maybe we should check attachment is listed
+        })
+        .fail(function (event) {
+          if (event instanceof ProgressEvent) {
+            // If the document do not exist it fails
+            if (event.target.status === 404) {
+              command.error({
+                'status': 404,
+                'message': 'Unable to get attachment',
+                'reason': 'Missing document'
+              });
+            } else {
+              command.error(
+                event.target.status,
+                event.target.statusText,
+                "Problem while retrieving document"
+              );
+            }
+            throw 1
           } else {
-            command.error(
-              event.target.status,
-              event.target.statusText,
-              "Problem while retrieving document"
-            );
+            throw event
           }
-        } else {
-          command.error(event);
-        }
-        // XXX Do only one .fail method at the end of the .then chain
-        // XXX Here the below .then is always called
-      })
-    // We get the attachment
-      .then(function () {
-        return that._get(param._id + "-attachments/" + param._attachment);
-      })
-      .then(function (doc) {
-        var attachment_blob = new Blob([doc.target.response]);
+        });
+    }
+
+    // 2. We get the Attachment
+    function getAttachment () {
+      return that._get(param._id + "-attachments/" + param._attachment);
+    }
+
+    // 3. On success give attachment
+    function onSuccess (event) {
+        var attachment_blob = new Blob([event.target.response]);
         command.success(
-          doc.target.status,
+          event.target.status,
           {
             "data": attachment_blob,
             // XXX make the hash during the putAttachment and store it into the
             // metadata file.
-            "digest": jIO.util.makeBinaryStringDigest(attachment_blob)
+            "digest": document._attachments[param._attachment].digest
           }
         );
-      })
-      .fail(function (error) {
-        if (error instanceof ProgressEvent) {
-          command.error(
-            {
-              'status': error.target.status,
-              'reason': error.target.statusText,
-              'message': "Cannot find attachment"
-            }
-          );
-        } else {
-          command.error(error);
+    }
+
+    // 4. onError
+    function onError (event) {
+      if (event instanceof ProgressEvent) {
+        command.error(
+          event.target.status,
+          event.target.statusText,
+          "Cannot find attachment"
+        );
+      } else {
+        if (event !== 1) {
+          throw event;
         }
-      });
+      }
+    }
+
+    return getDocument()
+      .then(getAttachment)
+      .then(onSuccess)
+      .fail(onError);
   };
 
   /**
@@ -349,30 +362,37 @@
         })
       );
     }
+
+    // 4. onSuccess
+    function onSuccess (params) {
+      command.success({
+        'digest': digest,
+        'status': 201,
+        'statusText': 'Created'
+        // XXX are you sure this the attachment is created?
+      });
+    }
+
+    // 5. onError
+    function onError (event) {
+      if (event instanceof ProgressEvent) {
+        command.error(
+          event.target.status,
+          event.target.statusText,
+          "Unable to put attachment"
+        );
+      } else {
+        if (event !== 1) {
+          throw event;
+        }
+      }
+    }
+
     return getDocument()
       .then(pushAttachment)
       .then(updateDocument)
-      .then(function (params) {
-        command.success({
-          'digest': digest,
-          'status': 201,
-          'statusText': 'Created'
-          // XXX are you sure this the attachment is created?
-        });
-      })
-      .fail(function (event) {
-        if (event instanceof ProgressEvent) {
-          command.error(
-            event.target.status,
-            event.target.statusText,
-            "Unable to put attachment"
-          );
-        } else {
-          if (event !== 1) {
-            throw event;
-          }
-        }
-      });
+      .then(onSuccess)
+      .fail(onError);
   };
 
   /**
