@@ -363,12 +363,13 @@
         });
       })
       .fail(function (event) {
-        // XXX instanceof ProgressEvent
-        command.error(
-          event.target.status,
-          event.target.statusText,
-          "Unable to put attachment"
-        );
+        if (event instanceof ProgressEvent) {
+          command.error(
+            event.target.status,
+            event.target.statusText,
+            "Unable to put attachment"
+          );
+        }
       });
   };
 
@@ -438,12 +439,13 @@
         }
       });
     }).fail(function (error) {
-      // XXX instanceof ProgressEvent
-      command.error(
-        "error",
-        "did not work as expected",
-        "Unable to call allDocs"
-      );
+      if (event instanceof ProgressEvent) {
+        command.error(
+          "error",
+          "did not work as expected",
+          "Unable to call allDocs"
+        );
+      }
     });
   };
 
@@ -474,46 +476,65 @@
    */
   DropboxStorage.prototype.remove = function (command, param) {
     var that = this;
-
-    // Remove the document
-    return this._remove(param._id)
-      .fail(function (error) {
-        // XXX instanceof ProgressEvent
-        // If 404 the document do not exist
-        if (error.target.status === 404) {
-          command.error(
-            error.target.status,
-            error.target.statusText,
-            "Document not found"
-          );
-        }
-        command.error(
-          error.target.status,
-          error.target.statusText,
-          "Unable to delete document"
-        );
-      })
-    // Remove its attachment (all in the same folder)
-      .then(function () {
-        return that._remove(param._id + '-attachments')
-      })
-      .then(function (event) {
+    // 1. Remove Document
+    function removeDocument () {
+      return that._remove(param._id)
+    }
+    // 2. Remove its attachments
+    function removeAttachments () {
+      return that._remove(param._id + '-attachments')
+      // Even if it fails it is ok (no attachments)
+        .fail(function (event) {
+          if (event instanceof ProgressEvent) {
+            if (event.target.status === 404) {
+              return 0;
+            } else {
+              throw event;
+            }
+          } else {
+            console.log("Oups");
+            console.log(event)
+          }
+        })
+    }
+    // 3. Notify Success
+    function onSuccess (event) {
+      if (event instanceof ProgressEvent) {
         command.success(
           event.target.status,
           event.target.statusText
         );
-      })
-    // Even if it fails it might it is ok (no attachments)
-    // XXX Should check that status is 404
-    // XXX Maybe remove attachment then document or all at once !!?
-      .fail(function (event) {
-        if (event instanceof ProgressEvent) {
-          command.success(
-            200,
-            "OK"
+      } else {
+        command.success(200, "OK");
+      }
+    }
+    // 4. Notify Error
+    function onError (event) {
+      if (event instanceof ProgressEvent) {
+        if (event.target.status === 404) {
+          command.error(
+            event.target.status,
+            event.target.statusText,
+            "Document not found"
+          );
+        } else {
+          command.error(
+            event.target.status,
+            event.target.statusText,
+            "Unable to delete document"
           );
         }
-      });
+      } else {
+        console.log("Houston problem");
+        console.log(event);
+      }
+    }
+    // Remove the document
+    return removeDocument()
+    // Remove its attachment (all in the same folder)
+      .then(removeAttachments)
+      .then(onSuccess)
+      .fail(onError);
   };
 
   /**
