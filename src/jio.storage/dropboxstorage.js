@@ -290,70 +290,68 @@
    * @param  {Object} options The command options
    */
   DropboxStorage.prototype.putAttachment = function (command, param) {
-    var that = this, digest;
+    var that = this, document = {}, digest;
     // We calculate the digest string of the attachment
     digest = jIO.util.makeBinaryStringDigest(param._blob);
-    // We first get the document
-    return this._get(param._id)
-      .then(function (answer) {
-        return JSON.parse(answer.target.responseText);
-      })
-      .fail(function (event) {
-        if (event instanceof ProgressEvent) {
-          // If the document do not exist it fails
-          if (event.target.status === 404) {
-            command.error({
-              'status': 404,
-              'message': 'Impossible to add attachment',
-              'reason': 'Missing document'
-            });
-          } else {
-            command.error(
-              event.target.status,
-              event.target.statusText,
-              "Problem while retrieving document"
-            );
-          }
-        }
 
-        // XXX this .fail method is working well, so we go to next then with
-        // `undefined` as first argument.
-      })
-    // Once we have the document we need to update it
-    //   and push the attachment
-      .then(function (document) {
-        var updateDocument, pushAttachment;
-        if (document._attachments === undefined) {
-          document._attachments = {};
-        }
-        // We update the document to include the attachment
-        updateDocument = function () {
-          document._attachments[param._attachment] = {
-            "content_type": param._blob.type,
-            "digest": digest,
-            "length": param._blob.size
-          };
-          return that._put(
-            param._id,
-            new Blob([JSON.stringify(document)], {
-              type: "application/json"
-            })
-          );
-        };
-        // We push the attachment
-        pushAttachment = function () {
-          return that._put(
-            param._attachment,
-            param._blob,
-            param._id + '-attachments/'
-          );
-        };
-        // Push of updated document and attachment are launched
-        return RSVP.all([updateDocument(), pushAttachment()]);
-        // XXX If the attachment is not uploaded due to an error, the metadata
-        // should not be updated.  I think doing
-        // `pushAttachment().then(updateDocument)` is better.
-      })
+    // 1. We first get the document
+    function getDocument () {
+      return that._get(param._id)
+        .then(function (answer) {
+          document = JSON.parse(answer.target.responseText);
+        })
+        .fail(function (event) {
+          if (event instanceof ProgressEvent) {
+            // If the document do not exist it fails
+            if (event.target.status === 404) {
+              command.error({
+                'status': 404,
+                'message': 'Impossible to add attachment',
+                'reason': 'Missing document'
+              });
+            } else {
+              command.error(
+                event.target.status,
+                event.target.statusText,
+                "Problem while retrieving document"
+              );
+            }
+            throw 1
+          } else {
+            throw event
+          }
+        });
+    }
+
+    // 2. We push the attachment
+    function pushAttachment () {
+      return that._put(
+        param._attachment,
+        param._blob,
+        param._id + '-attachments/'
+      );
+    };
+
+    // 3. We update the document
+    function updateDocument () {
+      if (document._attachments === undefined) {
+        document._attachments = {};
+      }
+      document._attachments[param._attachment] = {
+        "content_type": param._blob.type,
+        "digest": digest,
+        "length": param._blob.size
+      };
+      return that._put(
+        param._id,
+        new Blob([JSON.stringify(document)], {
+          type: "application/json"
+        })
+      );
+    }
+    return getDocument()
+      .then(pushAttachment)
+      .then(updateDocument)
       .then(function (params) {
         command.success({
           'digest': digest,
@@ -369,6 +367,10 @@
             event.target.statusText,
             "Unable to put attachment"
           );
+        } else {
+          if (event !== 1) {
+            throw event;
+          }
         }
       });
   };
