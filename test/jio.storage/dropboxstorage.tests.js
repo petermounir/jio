@@ -583,7 +583,7 @@
       "type": "dropbox",
       "access_token": "v43SQLCEoi8AAAAAAAAAAVixCoMfDelgGj3NRPfE" +
         "nqscAuNGp2LhoS8-GiAaDD4C",
-      "root_folder": "AllDocs-test"
+      "application_name": "AllDocs-test"
     }, {
       "workspace": {}
     });

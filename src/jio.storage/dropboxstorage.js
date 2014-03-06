@@ -40,7 +40,8 @@
   var UPLOAD_URL = "https://api-content.dropbox.com/1/",
     UPLOAD_OR_GET_URL = "https://api-content.dropbox.com/1/files/sandbox/",
     REMOVE_URL = "https://api.dropbox.com/1/fileops/delete/",
-    LIST_URL = 'https://api.dropbox.com/1/metadata/sandbox/';
+    LIST_URL = 'https://api.dropbox.com/1/metadata/sandbox/',
+    METADATA_FOLDER = 'metadata';
 
   /**
    * The JIO DropboxStorage extension
@@ -53,14 +54,14 @@
       throw new TypeError("Access Token' must be a string " +
                           "which contains more than one character.");
     }
-    if (typeof spec.root_folder !== 'string' && spec.root_folder) {
+    if (typeof spec.application_name !== 'string' && spec.application_name) {
       throw new TypeError("'Root Folder' must be a string ");
     }
-    if ( !spec.root_folder ) {
-      spec.root_folder = "default"
+    if ( !spec.application_name ) {
+      spec.application_name = "default"
     }
     this._access_token = spec.access_token;
-    this._root_folder = spec.root_folder;
+    this._application_name = spec.application_name;
   }
 
   // Storage specific put method
@@ -77,7 +78,7 @@
     return jIO.util.ajax({
       "type": "POST",
       "url": UPLOAD_URL + 'files/sandbox/' +
-        this._root_folder + '/' +
+        this._application_name + '/' +
         path + '?access_token=' + this._access_token,
       "data": data
     });
@@ -104,7 +105,7 @@
 
     // 1. get Document, if it exists abort
     function getDocument () {
-      return that._get(metadata._id)
+      return that._get(METADATA_FOLDER + "/" + metadata._id)
         .then(function (answer) {
           command.error(
             409,
@@ -130,7 +131,8 @@
         doc._id,
         new Blob([JSON.stringify(metadata)], {
           type: "application/json"
-        })
+        }),
+        METADATA_FOLDER
       )
     }
 
@@ -175,7 +177,7 @@
 
     // 1. We first get the document
     function getDocument () {
-      return that._get(metadata._id)
+      return that._get( METADATA_FOLDER + '/' + metadata._id)
         .then(function (answer) {
           old_document = JSON.parse(answer.target.responseText);
         })
@@ -199,7 +201,8 @@
         metadata._id,
         new Blob([JSON.stringify(metadata)], {
           type: "application/json"
-        })
+        }),
+        METADATA_FOLDER
       )
     }
 
@@ -232,7 +235,7 @@
   // Storage specific get method
   DropboxStorage.prototype._get = function (key) {
     var download_url = 'https://api-content.dropbox.com/1/files/sandbox/' +
-      this._root_folder + '/' +
+      this._application_name + '/' +
       key + '?access_token=' + this._access_token;
     return jIO.util.ajax({
       "type": "GET",
@@ -246,7 +249,7 @@
    * @param  {object} command The JIO command
    **/
   DropboxStorage.prototype.get = function (command, param) {
-    return this._get(param._id)
+    return this._get(METADATA_FOLDER + '/' + param._id)
       .then(function (event) {
         if (event.target.responseText !== undefined) {
           command.success({
@@ -285,7 +288,7 @@
 
     // 1. We first get the document
     function getDocument () {
-      return that._get(param._id)
+      return that._get(METADATA_FOLDER + '/' + param._id)
         .then(function (answer) {
           document = JSON.parse(answer.target.responseText);
           // XXX Maybe we should check attachment is listed
@@ -315,7 +318,7 @@
 
     // 2. We get the Attachment
     function getAttachment () {
-      return that._get(param._id + "-attachments/" + param._attachment);
+      return that._get(param._id + "-" + param._attachment);
     }
 
     // 3. On success give attachment
@@ -368,7 +371,7 @@
 
     // 1. We first get the document
     function getDocument () {
-      return that._get(param._id)
+      return that._get(METADATA_FOLDER + '/' + param._id)
         .then(function (answer) {
           document = JSON.parse(answer.target.responseText);
         })
@@ -398,9 +401,8 @@
     // 2. We push the attachment
     function pushAttachment () {
       return that._put(
-        param._attachment,
-        param._blob,
-        param._id + '-attachments/'
+        param._id + '-' + param._attachment,
+        param._blob
       );
     };
 
@@ -418,7 +420,8 @@
         param._id,
         new Blob([JSON.stringify(document)], {
           type: "application/json"
-        })
+        }),
+        METADATA_FOLDER
       );
     }
 
@@ -464,17 +467,18 @@
    */
   DropboxStorage.prototype.allDocs = function (command, param, options) {
     var list_url = '', result = [], my_storage = this,
-    stripping_length = 2 + my_storage._root_folder.length ;
+    stripping_length = 3 + my_storage._application_name.length +
+      METADATA_FOLDER.length ;
 
     // Too specific, should be less storage dependent
     list_url = 'https://api.dropbox.com/1/metadata/sandbox/' +
-      this._root_folder + '/' +
+      this._application_name + '/' + METADATA_FOLDER + '/' +
       "?list=true" +
       '&access_token=' + this._access_token;
 
     // We get a list of all documents
     jIO.util.ajax({
-      "type": "POST",
+      "type": "GET",
       "url": list_url
     }).then(function (response) {
       var i, item, item_id, data, count, promise_list = [];
@@ -488,11 +492,12 @@
         // If the element is a folder it is not included (storage specific)
         if (!item.is_dir) {
           // NOTE: the '/' at the begining of the path is stripped
-          item_id = item.path[0] === '/' ? item.path.substr(stripping_length) : item.path;
-
+          item_id = item.path.substr(stripping_length);
+          console.log(item_id);
+          // item.path[0] === '/' ?  : item.path
           // Prepare promise_list to fetch document in case of include_docs
           if (options.include_docs === true) {
-            promise_list.push(my_storage._get(item_id));
+            promise_list.push(my_storage._get(METADATA_FOLDER + '/' + item_id));
           }
 
           // Document is added to the result list
@@ -539,7 +544,7 @@
       path = '';
     }
     DELETE_PARAMETERS = "?root=sandbox&path=" +
-      this._root_folder + '/' +
+      this._application_name + '/' +
       path + '/' + key + "&access_token=" + this._access_token;
     delete_url = DELETE_HOST + DELETE_PREFIX + DELETE_PARAMETERS;
     return jIO.util.ajax({
@@ -559,23 +564,23 @@
     var that = this;
     // 1. Remove Document
     function removeDocument () {
-      return that._remove(param._id)
+      return that._remove(METADATA_FOLDER + '/' + param._id)
     }
     // 2. Remove its attachments
     function removeAttachments () {
-      return that._remove(param._id + '-attachments')
-      // Even if it fails it is ok (no attachments)
-        .fail(function (event) {
-          if (event instanceof ProgressEvent) {
-            if (event.target.status === 404) {
-              return 0;
-            } else {
-              throw event;
-            }
-          } else {
-            console.log(event)
-          }
-        })
+      //return that._remove(param._id + '-')
+      //// Even if it fails it is ok (no attachments)
+      //  .fail(function (event) {
+      //    if (event instanceof ProgressEvent) {
+      //      if (event.target.status === 404) {
+      //        return 0;
+      //      } else {
+      //        throw event;
+      //      }
+      //    } else {
+      //      console.log(event)
+      //    }
+      //  })
     }
     // 3. Notify Success
     function onSuccess (event) {
@@ -628,12 +633,12 @@
     var that = this, document = {};
     // Remove an attachment
     //       Then it should be tested
-    return this._get(param._id)
+    return this._get(METADATA_FOLDER + '/' +  param._id)
       .then(function (answer) {
         document = JSON.parse(answer.target.responseText);
       })
       .then(function () {
-        return that._remove(param._attachment, param._id + '-attachments')
+        return that._remove(param._id + '-' + param._attachment)
       })
       .then(function (event) {
         delete document._attachments[param._attachment]
@@ -644,7 +649,8 @@
           param._id,
            new Blob([JSON.stringify(document)], {
              type: "application/json"
-           })
+           }),
+        METADATA_FOLDER
         );
       })
       .then(function (event) {
