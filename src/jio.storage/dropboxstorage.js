@@ -93,29 +93,72 @@
    */
   DropboxStorage.prototype.post = function (command, metadata) {
     // A copy of the document is made
-    var doc = jIO.util.deepClone(metadata), doc_id = metadata._id;
+    var doc = jIO.util.deepClone(metadata), doc_id = metadata._id,
+    that = this;
+
     // An id is generated if none is provided
     if (!doc_id) {
       doc_id = jIO.util.generateUuid();
       doc._id = doc_id;
     }
+
+    // 1. get Document, if it exists abort
+    function getDocument () {
+      return that._get(metadata._id)
+        .then(function (answer) {
+          command.error(
+            409,
+            "document exists",
+            "Cannot create a new document"
+          )
+          throw 1
+        })
+        .fail(function (event) {
+          if (event instanceof ProgressEvent) {
+            // If the document do not exist no problem
+            if (event.target.status === 404) {
+              return 0;
+            }
+          }
+          throw event;
+        });
+    }
+
+    // 2. Update Document
+    function updateDocument () {
+      return that._put(
+        doc._id,
+        new Blob([JSON.stringify(metadata)], {
+          type: "application/json"
+        })
+      )
+    }
+
+    // onError
+    function onError (event) {
+      if (event instanceof ProgressEvent) {
+        command.error(
+          event.target.status,
+          event.target.statusText,
+          "Unable to post doc"
+        );
+      } else {
+        if (event !== 1) {
+          console.log(event);
+          throw event;
+        }
+      }
+    }
+
     // The document is pushed
-    return this._put(
-      doc_id,
-      new Blob([JSON.stringify(doc)], {
-        type: "application/json"
+    return getDocument()
+      .then(updateDocument)
+      .then(function (doc) {
+        command.success({
+          "id": doc_id
+        });
       })
-    ).then(function (doc) {
-      command.success({
-        "id": doc_id
-      });
-    }).fail(function (event) {
-      command.error(
-        event.target.status,
-        event.target.statusText,
-        "Unable to post doc"
-      );
-    });
+      .fail(onError);
   };
 
   /**
@@ -530,7 +573,6 @@
               throw event;
             }
           } else {
-            console.log("Oups");
             console.log(event)
           }
         })

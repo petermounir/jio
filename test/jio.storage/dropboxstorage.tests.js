@@ -70,7 +70,7 @@
   }
 
   test("Post & Get", function () {
-    expect(5);
+    expect(6);
     var jio = jIO.createJIO({
       "type": "dropbox",
       "access_token": "v43SQLCEoi8AAAAAAAAAAVixCoMfDelgGj3NRPfE" +
@@ -80,7 +80,6 @@
     });
 
     stop();
-
     all([
 
       // get inexistent document
@@ -117,12 +116,12 @@
            "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx : " + uuid);
 
       }).then(function () {
-
-        // post non empty document
-        return jio.post({
-          "_id": "post1",
-          "title": "myPost1"
-        });
+        return jio.remove({"_id": "post1"})
+      }).always(function () {
+          return jio.post({
+            "_id": "post1",
+            "title": "myPost1"
+          });
 
       }).always(function (answer) {
 
@@ -153,6 +152,24 @@
           "status": 200,
           "statusText": "Ok"
         }, "Get, Check document");
+      }).then(function () {
+
+        // post but document already exists
+        return jio.post({"_id": "post1", "title": "myPost2"});
+
+      }).always(function (answer) {
+
+        deepEqual(answer, {
+          "error": "conflict",
+          "id": "post1",
+          "message": "Cannot create a new document",
+          "method": "post",
+          "reason": "document exists",
+          "result": "error",
+          "status": 409,
+          "statusText": "Conflict"
+        }, "Post but document already exists");
+
       })
 
     ]).always(start);
