@@ -566,7 +566,7 @@
         "id": "a",
         "message": "Document not found",
         "method": "remove",
-        "reason": "OK",
+        "reason": "Not Found",
         "result": "error",
         "status": 404,
         "statusText": "Not Found"

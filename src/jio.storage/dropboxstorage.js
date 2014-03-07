@@ -572,39 +572,56 @@
    * @param  {Object} param The given parameters
    */
   DropboxStorage.prototype.remove = function (command, param) {
-    var that = this;
-    // 1. Remove Document
+    var that = this, document = {};
+    // 1. get document
+    function getDocument () {
+      return that._get( METADATA_FOLDER + '/' + param._id)
+        .then(function (answer) {
+          document = JSON.parse(answer.target.responseText);
+        });
+    }
+
+    // 2 Remove Document
     function removeDocument () {
       return that._remove(METADATA_FOLDER + '/' + param._id)
     }
-    // 2. Remove its attachments
+
+    // 3 Remove its attachments
     function removeAttachments () {
-      //return that._remove(param._id + '-')
-      //// Even if it fails it is ok (no attachments)
-      //  .fail(function (event) {
-      //    if (event instanceof ProgressEvent) {
-      //      if (event.target.status === 404) {
-      //        return 0;
-      //      } else {
-      //        throw event;
-      //      }
-      //    } else {
-      //      console.log(event)
-      //    }
-      //  })
+      var promise_list = [], attachment_list = [], attachment_count = 0, i = 0;
+      if (document.hasOwnProperty('_attachments')) {
+        attachment_list = Object.keys(document._attachments)
+        attachment_count = attachment_list.length
+      }
+      for (i = 0; i < attachment_count; i += 1) {
+        promise_list.push(that._remove(param._id + '-' + attachment_list[i]))
+      }
+      return RSVP.all(promise_list)
+      // Even if it fails it is ok (no attachments)
+        .fail(function (event_list) {
+          var event_length = event_list.length, j = 0;
+          for (j = 0; j < event_length; j += 1){
+            // If not a ProgressEvent, there is something wrong with the code.
+            if (!event instanceof ProgressEvent) {
+              throw event;
+            }
+          }
+        })
     }
-    // 3. Notify Success
+
+    // 4 Notify Success
     function onSuccess (event) {
       if (event instanceof ProgressEvent) {
         command.success(
           event.target.status,
           event.target.statusText
         );
-      } else {
+      }
+      else {
         command.success(200, "OK");
       }
     }
-    // 4. Notify Error
+    // 5 Notify Error
     function onError (event) {
       if (event instanceof ProgressEvent) {
         if (event.target.status === 404) {
@@ -625,8 +642,8 @@
       }
     }
     // Remove the document
-    return removeDocument()
-    // Remove its attachment (all in the same folder)
+    return getDocument()
+      .then(removeDocument)
       .then(removeAttachments)
       .then(onSuccess)
       .fail(onError);
