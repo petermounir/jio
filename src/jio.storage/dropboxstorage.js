@@ -291,7 +291,19 @@
       return that._get(METADATA_FOLDER + '/' + param._id)
         .then(function (answer) {
           document = JSON.parse(answer.target.responseText);
-          // XXX Maybe we should check attachment is listed
+
+          // We check the attachment is referenced
+          if (document.hasOwnProperty('_attachments')) {
+            if (document._attachments.hasOwnProperty(param._attachment)) {
+              return
+            }
+          }
+          command.error(
+            404,
+            "Not Found",
+            "Cannot find attachment"
+          );
+          throw 1;
         })
         .fail(function (event) {
           if (event instanceof ProgressEvent) {
@@ -493,7 +505,6 @@
         if (!item.is_dir) {
           // NOTE: the '/' at the begining of the path is stripped
           item_id = item.path.substr(stripping_length);
-          console.log(item_id);
           // item.path[0] === '/' ?  : item.path
           // Prepare promise_list to fetch document in case of include_docs
           if (options.include_docs === true) {
@@ -610,7 +621,6 @@
           );
         }
       } else {
-        console.log("Houston problem");
         console.log(event);
       }
     }
