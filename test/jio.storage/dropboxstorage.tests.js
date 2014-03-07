@@ -101,19 +101,24 @@
       }),
 
       // post without id
-      jio.post({}).always(function (answer) {
+      jio.post({})
+        .then(function (answer) {
+          var id = answer.id
+          delete answer.id;
+          deepEqual(answer, {
+            "method": "post",
+            "result": "success",
+            "status": 201,
+            "statusText": "Created"
+          }, "Post without id");
 
-        var uuid = answer.id;
-        delete answer.id;
-        deepEqual(answer, {
-          "method": "post",
-          "result": "success",
-          "status": 201,
-          "statusText": "Created"
-        }, "Post without id");
+          // We check directly on the document to get its own id
+          return jio.get({'_id': id})
+        }).always(function (answer) {
 
-        ok(util.isUuid(uuid), "Uuid should look like " +
-           "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx : " + uuid);
+          var uuid = answer.data._id;
+          ok(util.isUuid(uuid), "Uuid should look like " +
+             "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx : " + uuid);
 
       }).then(function () {
         return jio.remove({"_id": "post1"})
